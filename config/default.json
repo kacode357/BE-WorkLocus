@@ -1,0 +1,8 @@
+{
+  "vnp_TmnCode": "CDDDMPG2",
+  "vnp_HashSecret": "CPE1TNKZK0EMVLKKR1MYCYWDICK3JLPA",
+  "vnp_Url": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+  "vnp_Api": "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction",
+  "vnp_ReturnUrl": "https://mmaposwebv1.vercel.app/"
+ 
+}
