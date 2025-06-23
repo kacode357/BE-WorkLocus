@@ -48,9 +48,23 @@ const checkOutService = async ({ userId, checkOutData }) => {
             return { status: 409, ok: false, message: ATTENDANCE_MESSAGES.ALREADY_CHECKED_OUT };
         }
 
-        attendanceRecord.check_out_time = new Date();
+        const checkOutTime = new Date();
+        attendanceRecord.check_out_time = checkOutTime;
         attendanceRecord.check_out_latitude = checkOutData.latitude;
         attendanceRecord.check_out_longitude = checkOutData.longitude;
+
+        // --- Bắt đầu logic tính toán thời gian ---
+        const checkInTime = attendanceRecord.check_in_time;
+        const durationMs = checkOutTime - checkInTime; // Khoảng thời gian tính bằng mili giây
+
+        const totalMinutes = Math.floor(durationMs / (1000 * 60));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        attendanceRecord.total_work_time = `${hours} giờ ${minutes} phút`;
+        // --- Kết thúc logic tính toán ---
+        
+
         await attendanceRecord.save();
 
         return { status: 200, ok: true, message: ATTENDANCE_MESSAGES.CHECK_OUT_SUCCESS, data: attendanceRecord };
@@ -59,7 +73,6 @@ const checkOutService = async ({ userId, checkOutData }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
-
 const getMyAttendanceHistoryService = async ({ userId, searchCondition, pageInfo }) => {
     try {
         const { date_from, date_to } = searchCondition || {};
