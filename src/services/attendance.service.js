@@ -1,6 +1,50 @@
 const Attendance = require("../models/attendance.model");
 const { ATTENDANCE_MESSAGES } = require("../constants/attendance.messages");
 const { GENERAL_MESSAGES } = require("../constants/auth.messages");
+
+// HÀM MỚI: Kiểm tra trạng thái chấm công trong ngày
+const getAttendanceStatusService = async ({ userId }) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Tìm bản ghi chấm công của hôm nay mà CHƯA check-out
+        const todaysAttendance = await Attendance.findOne({
+            user_id: userId,
+            work_date: today,
+            check_out_time: null, // Điều kiện quan trọng
+        });
+
+        if (todaysAttendance) {
+            // Nếu tìm thấy, tức là đã check-in
+            return {
+                status: 200,
+                ok: true,
+                message: ATTENDANCE_MESSAGES.ALREADY_CHECKED_IN,
+                data: {
+                    isCheckedIn: true,
+                    checkInTime: todaysAttendance.check_in_time,
+                },
+            };
+        } else {
+            // Nếu không tìm thấy, tức là chưa check-in hoặc đã check-out
+            return {
+                status: 200,
+                ok: true,
+                message: ATTENDANCE_MESSAGES.NOT_YET_CHECKED_IN,
+                data: {
+                    isCheckedIn: false,
+                    checkInTime: null,
+                },
+            };
+        }
+    } catch (error) {
+        console.error("ERROR in getAttendanceStatusService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
+
+
 const checkInService = async ({ userId, checkInData }) => {
     try {
         const today = new Date();
@@ -53,18 +97,15 @@ const checkOutService = async ({ userId, checkOutData }) => {
         attendanceRecord.check_out_latitude = checkOutData.latitude;
         attendanceRecord.check_out_longitude = checkOutData.longitude;
 
-        // --- Bắt đầu logic tính toán thời gian ---
         const checkInTime = attendanceRecord.check_in_time;
-        const durationMs = checkOutTime - checkInTime; // Khoảng thời gian tính bằng mili giây
+        const durationMs = checkOutTime - checkInTime;
 
         const totalMinutes = Math.floor(durationMs / (1000 * 60));
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
 
         attendanceRecord.total_work_time = `${hours} giờ ${minutes} phút`;
-        // --- Kết thúc logic tính toán ---
         
-
         await attendanceRecord.save();
 
         return { status: 200, ok: true, message: ATTENDANCE_MESSAGES.CHECK_OUT_SUCCESS, data: attendanceRecord };
@@ -118,6 +159,7 @@ const getMyAttendanceHistoryService = async ({ userId, searchCondition, pageInfo
 };
 
 module.exports = {
+    getAttendanceStatusService, // Thêm hàm mới vào export
     checkInService,
     checkOutService,
     getMyAttendanceHistoryService,

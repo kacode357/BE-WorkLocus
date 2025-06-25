@@ -15,6 +15,12 @@ const handleRequest = async (serviceCall, res) => {
     }
 };
 
+// CONTROLLER MỚI:
+const getAttendanceStatusController = (req, res) => {
+    const userId = req.user._id;
+    handleRequest(() => AttendanceService.getAttendanceStatusService({ userId }), res);
+};
+
 const checkInController = (req, res) => {
     const userId = req.user._id;
     const { latitude, longitude } = req.body;
@@ -34,6 +40,7 @@ const getMyAttendanceHistoryController = (req, res) => {
 };
 
 module.exports = {
+    getAttendanceStatusController, // Thêm controller mới vào export
     checkInController,
     checkOutController,
     getMyAttendanceHistoryController,
