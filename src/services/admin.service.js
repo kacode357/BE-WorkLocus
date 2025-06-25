@@ -239,20 +239,18 @@ const searchWorkReportsService = async ({ searchCondition, pageInfo }) => {
 // HÀM ĐÃ ĐƯỢC CẬP NHẬT
 const searchUsersService = async ({ searchCondition, pageInfo }) => {
     try {
-        const { keyword, role } = searchCondition || {};
+        // 1. Lấy thêm is_activated từ request
+        const { keyword, role, is_activated } = searchCondition || {};
         const { pageNum, pageSize } = pageInfo || {};
 
         const page = parseInt(pageNum) || 1;
         const limit = parseInt(pageSize) || 10;
         const skip = (page - 1) * limit;
 
-        // THAY ĐỔI Ở ĐÂY: Thêm is_activated: true vào điều kiện mặc định
-        const queryConditions = {
-            is_deleted: { $ne: true },
-            is_activated: true
-        };
+        // Điều kiện cơ bản: luôn không lấy user đã xóa mềm
+        const queryConditions = { is_deleted: { $ne: true } };
 
-        // Lọc theo keyword (tìm trong tên và email)
+        // Lọc theo keyword
         if (keyword) {
             queryConditions.$or = [
                 { full_name: { $regex: keyword, $options: 'i' } },
@@ -263,6 +261,12 @@ const searchUsersService = async ({ searchCondition, pageInfo }) => {
         // Lọc theo role
         if (role) {
             queryConditions.role = role;
+        }
+
+        // 2. THAY ĐỔI: Lọc theo is_activated nếu nó được cung cấp
+        // typeof is_activated === 'boolean' đảm bảo chỉ lọc khi giá trị là true hoặc false
+        if (typeof is_activated === 'boolean') {
+            queryConditions.is_activated = is_activated;
         }
 
         const totalRecords = await User.countDocuments(queryConditions);
