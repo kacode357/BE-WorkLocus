@@ -162,21 +162,70 @@ const resetPasswordService = async ({ email, otp, newPassword }) => {
 
 const createInitialAdminService = async () => {
     try {
+        // Lấy thông tin admin từ biến môi trường
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const adminPassword = process.env.ADMIN_PASSWORD;
+
+        if (!adminEmail || !adminPassword) {
+            return {
+                status: 400,
+                ok: false,
+                message: "Thiếu biến môi trường ADMIN_EMAIL hoặc ADMIN_PASSWORD để tạo admin ban đầu.",
+            };
+        }
+
+        // Tạo tên đầy đủ cho admin, có thể là phần trước @ của email
+        const full_name = adminEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').trim(); // Loại bỏ ký tự đặc biệt, giữ lại chữ và số
+
         const adminData = {
-            full_name: "Super Admin",
-            email: "admin@worklocus.dev",
-            password: "AdminPassword@2025!",
+            full_name: full_name || "Super Admin", // Dùng full_name từ email hoặc mặc định
+            email: adminEmail,
+            password: adminPassword, // Đây là mật khẩu plaintext từ .env
         };
+
         const existingAdmin = await User.findOne({ email: adminData.email });
         if (existingAdmin) {
-            return { status: 409, ok: false, message: AUTH_MESSAGES.INITIAL_ADMIN_ALREADY_EXISTS(adminData.email) };
+            return {
+                status: 409,
+                ok: false,
+                message: AUTH_MESSAGES.INITIAL_ADMIN_ALREADY_EXISTS(adminData.email),
+            };
         }
+
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(adminData.password, salt);
-        const newAdmin = await User.create({ ...adminData, password: hashedPassword, role: "admin", is_activated: true });
+        const hashedPassword = await bcrypt.hash(adminData.password, salt); // Hash mật khẩu trước khi lưu
+
+        const newAdmin = await User.create({
+            ...adminData,
+            password: hashedPassword,
+            role: "admin",
+            is_activated: true,
+        });
+
+        // Gửi email thông báo tài khoản admin
+        const emailSubject = "Tài khoản Admin WorkLocus của bạn đã được tạo!";
+        const emailContent = `
+            <h2>Chào mừng ${newAdmin.full_name},</h2>
+            <p>Tài khoản quản trị viên của bạn trên WorkLocus đã được thiết lập thành công.</p>
+            <p>Dưới đây là thông tin đăng nhập của bạn (vui lòng thay đổi mật khẩu sau khi đăng nhập lần đầu):</p>
+            <ul>
+                <li><strong>Email:</strong> ${adminData.email}</li>
+                <li><strong>Mật khẩu:</strong> ${adminData.password}</li>
+            </ul>
+            <p>Trân trọng,</p>
+            <p>Đội ngũ WorkLocus</p>
+        `;
+        await sendEmail(adminData.email, emailSubject, emailContent);
+
         const adminResponse = newAdmin.toObject();
-        delete adminResponse.password;
-        return { status: 201, ok: true, message: AUTH_MESSAGES.INITIAL_ADMIN_SUCCESS, data: adminResponse };
+        delete adminResponse.password; // Không trả về mật khẩu đã hash trong response
+
+        return {
+            status: 201,
+            ok: true,
+            message: AUTH_MESSAGES.INITIAL_ADMIN_SUCCESS,
+            data: adminResponse,
+        };
     } catch (error) {
         console.error("ERROR in createInitialAdminService:", error);
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
