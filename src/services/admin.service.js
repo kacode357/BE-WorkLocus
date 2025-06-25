@@ -236,6 +236,7 @@ const searchWorkReportsService = async ({ searchCondition, pageInfo }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+// HÀM ĐÃ ĐƯỢC CẬP NHẬT
 const searchUsersService = async ({ searchCondition, pageInfo }) => {
     try {
         const { keyword, role } = searchCondition || {};
@@ -245,10 +246,13 @@ const searchUsersService = async ({ searchCondition, pageInfo }) => {
         const limit = parseInt(pageSize) || 10;
         const skip = (page - 1) * limit;
 
-        // Điều kiện tìm kiếm cơ bản: không lấy các user đã bị xóa mềm
-        const queryConditions = { is_deleted: { $ne: true } };
+        // THAY ĐỔI Ở ĐÂY: Thêm is_activated: true vào điều kiện mặc định
+        const queryConditions = {
+            is_deleted: { $ne: true },
+            is_activated: true
+        };
 
-        // 1. Lọc theo keyword (tìm trong tên và email)
+        // Lọc theo keyword (tìm trong tên và email)
         if (keyword) {
             queryConditions.$or = [
                 { full_name: { $regex: keyword, $options: 'i' } },
@@ -256,18 +260,15 @@ const searchUsersService = async ({ searchCondition, pageInfo }) => {
             ];
         }
 
-        // 2. Lọc theo role
+        // Lọc theo role
         if (role) {
             queryConditions.role = role;
         }
 
-        // Đếm tổng số bản ghi khớp điều kiện
         const totalRecords = await User.countDocuments(queryConditions);
-
-        // Lấy danh sách user theo điều kiện, sắp xếp và phân trang
         const records = await User.find(queryConditions)
-            .select('-password -refresh_token') // Loại bỏ các trường nhạy cảm
-            .sort({ created_at: -1 }) // Sắp xếp theo ngày tạo mới nhất
+            .select('-password -refresh_token')
+            .sort({ created_at: -1 })
             .skip(skip)
             .limit(limit);
 
