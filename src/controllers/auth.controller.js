@@ -55,7 +55,7 @@ const verifyEmailController = async (req, res) => {
 
         if (result.status === 200) {
             // Sửa lại URL cho đúng, không chứa cú pháp Markdown
-            return res.redirect("https://hoanghamobile.com/tin-tuc/wp-content/uploads/2024/11/tai-hinh-nen-dep-mien-phi.jpg");
+            return res.redirect("https://work-locus.vercel.app/");
         }
 
         return res.status(result.status).send(`<h1>${result.message}</h1>`);
