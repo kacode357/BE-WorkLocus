@@ -102,10 +102,48 @@ const deleteWorkReportService = async ({ reportId, userId }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const getReportsByAttendanceIdService = async ({ attendanceId }) => {
+    try {
+        // Tìm tất cả các báo cáo có attendance_id tương ứng và chưa bị xóa
+        const reports = await WorkReport.find({
+            attendance_id: attendanceId,
+            is_deleted: false,
+        })
+        .populate('work_type_id', 'name') // Lấy cả tên của loại công việc
+        .sort({ created_at: 'desc' }); // Sắp xếp mới nhất lên đầu
 
+        // Nếu không tìm thấy báo cáo nào
+        if (!reports) {
+            return {
+                status: 200,
+                ok: true,
+                message: WORK_REPORT_MESSAGES.GET_REPORTS_SUCCESS,
+                data: {
+                    reports: [],
+                    totalReports: 0,
+                },
+            };
+        }
+
+        // Trả về danh sách báo cáo và tổng số lượng
+        return {
+            status: 200,
+            ok: true,
+            message: WORK_REPORT_MESSAGES.GET_REPORTS_SUCCESS,
+            data: {
+                reports: reports,
+                totalReports: reports.length,
+            },
+        };
+    } catch (error) {
+        console.error("ERROR in getReportsByAttendanceIdService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
     createWorkReportService,
     getMyTodaysReportsService,
     updateWorkReportService,
     deleteWorkReportService,
+      getReportsByAttendanceIdService,
 };

@@ -40,10 +40,16 @@ const deleteWorkReportController = (req, res) => {
         userId: req.user._id,
     }), res);
 };
-
+const getReportsByAttendanceIdController = (req, res) => {
+    // Lấy ID từ params của URL, ví dụ: /api/work-reports/by-attendance/some_id_here
+    handleRequest(() => WorkReportService.getReportsByAttendanceIdService({
+        attendanceId: req.params.id,
+    }), res);
+};
 module.exports = {
     createWorkReportController,
     getMyTodaysReportsController,
     updateWorkReportController,
     deleteWorkReportController,
+    getReportsByAttendanceIdController, 
 };

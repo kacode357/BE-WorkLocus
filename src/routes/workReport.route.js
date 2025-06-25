@@ -18,4 +18,6 @@ router.put("/:id", WorkReportController.updateWorkReportController);
 // Xóa một báo cáo công việc đã gửi
 router.delete("/:id", WorkReportController.deleteWorkReportController);
 
+// Lấy danh sách báo cáo theo attendance_id
+router.get("/by-attendance/:id", WorkReportController.getReportsByAttendanceIdController);
 module.exports = router;
