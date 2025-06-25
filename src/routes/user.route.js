@@ -10,6 +10,6 @@ router.use(verifyToken);
 router.put("/profile", UserController.updateProfileController);
 
 // Route để người dùng tự đổi mật khẩu
-router.patch("/password", UserController.changePasswordController);
+router.put("/password", UserController.changePasswordController);
 
 module.exports = router;
