@@ -8,7 +8,7 @@ const { verifyToken, checkAdmin } = require("../middleware/auth.js");
 router.use(verifyToken, checkAdmin);
 
 // === Các route quản lý người dùng ===
-
+router.post("/users/search", AdminController.searchUsersController); 
 router.patch("/users/:id/block", AdminController.blockUserController); 
 router.patch("/users/:id/unblock", AdminController.unblockUserController);
 router.patch("/users/:id/change-password", AdminController.adminChangePasswordController);

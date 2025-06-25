@@ -58,8 +58,11 @@ const searchAllAttendancesController = (req, res) => {
 const searchWorkReportsController = (req, res) => {
     handleRequest(() => AdminService.searchWorkReportsService(req.body), res);
 };
-
+const searchUsersController = (req, res) => {
+    handleRequest(() => AdminService.searchUsersService(req.body), res);
+};
 module.exports = {
+    searchUsersController,
     blockUserController,
     unblockUserController,
     softDeleteUserController,

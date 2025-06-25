@@ -236,8 +236,61 @@ const searchWorkReportsService = async ({ searchCondition, pageInfo }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const searchUsersService = async ({ searchCondition, pageInfo }) => {
+    try {
+        const { keyword, role } = searchCondition || {};
+        const { pageNum, pageSize } = pageInfo || {};
 
+        const page = parseInt(pageNum) || 1;
+        const limit = parseInt(pageSize) || 10;
+        const skip = (page - 1) * limit;
+
+        // Điều kiện tìm kiếm cơ bản: không lấy các user đã bị xóa mềm
+        const queryConditions = { is_deleted: { $ne: true } };
+
+        // 1. Lọc theo keyword (tìm trong tên và email)
+        if (keyword) {
+            queryConditions.$or = [
+                { full_name: { $regex: keyword, $options: 'i' } },
+                { email: { $regex: keyword, $options: 'i' } }
+            ];
+        }
+
+        // 2. Lọc theo role
+        if (role) {
+            queryConditions.role = role;
+        }
+
+        // Đếm tổng số bản ghi khớp điều kiện
+        const totalRecords = await User.countDocuments(queryConditions);
+
+        // Lấy danh sách user theo điều kiện, sắp xếp và phân trang
+        const records = await User.find(queryConditions)
+            .select('-password -refresh_token') // Loại bỏ các trường nhạy cảm
+            .sort({ created_at: -1 }) // Sắp xếp theo ngày tạo mới nhất
+            .skip(skip)
+            .limit(limit);
+
+        return {
+            status: 200,
+            ok: true,
+            message: ADMIN_MESSAGES.SEARCH_SUCCESS,
+            data: {
+                records,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalRecords / limit),
+                    totalRecords,
+                },
+            },
+        };
+    } catch (error) {
+        console.error("ERROR in searchUsersService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
+    searchUsersService,
     blockUserService,
     unblockUserService,
     softDeleteUserService,
