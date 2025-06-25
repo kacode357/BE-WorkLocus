@@ -316,17 +316,17 @@ const getDashboardStatsService = async () => {
 
         for (const attendance of attendances) {
             if (attendance.total_work_time) {
-                // Giả sử total_work_time có format "X giờ Y phút"
+                // Parse total_work_time có format "X giờ Y phút"
                 const timeParts = attendance.total_work_time.split(' ');
                 let hours = 0;
                 let minutes = 0;
 
                 if (timeParts.length >= 2) {
-                    hours = parseInt(timeParts[0]) || 0;
+                    hours = parseInt(timeParts[0]) || 0; // Lấy số giờ
                     if (timeParts.length >= 4) {
-                        minutes = parseInt(timeParts[2]) || 0;
+                        minutes = parseInt(timeParts[2]) || 0; // Lấy số phút
                     }
-                    totalWorkHours += hours + (minutes / 60);
+                    totalWorkHours += hours + (minutes / 60); // Chuyển phút thành giờ
                     totalAttendanceRecords++;
                 }
             }
