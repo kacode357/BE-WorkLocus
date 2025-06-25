@@ -1,28 +1,52 @@
+// File: config/database.js (PHIÊN BẢN CÓ LOG ĐẦY ĐỦ HƠN)
 
-require('dotenv').config();
 const mongoose = require('mongoose');
 
-const dbState = [{
-    value: 0,
-    label: "Disconnected"
-},
-{
-    value: 1,
-    label: "Connected"
-},
-{
-    value: 2,
-    label: "Connecting"
-},
-{
-    value: 3,
-    label: "Disconnecting"
-}];
+const MONGO_DB_URL = process.env.MONGO_DB_URL;
 
-
-const connection = async () => {
-    await mongoose.connect(process.env.MONGO_DB_URL);
-    const state = Number(mongoose.connection.readyState);
-    console.log(dbState.find(f => f.value === state).label, "to database"); // connected to db
+if (!MONGO_DB_URL) {
+  throw new Error(
+    'Vui lòng định nghĩa biến MONGO_DB_URL bên trong file .env của mày'
+  );
 }
-module.exports = connection;
+
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectDb() {
+  if (cached.conn) {
+    // LOG KHI DÙNG LẠI KẾT NỐI CŨ
+    console.log("🚀 Dùng lại kết nối database đã cache!");
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+    };
+    
+    // LOG KHI BẮT ĐẦU TẠO KẾT NỐI MỚI
+    console.log("✨ Bắt đầu tạo một kết nối database mới...");
+    cached.promise = mongoose.connect(MONGO_DB_URL, opts).then((mongoose) => {
+      return mongoose;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+    // >>> DÒNG LOG MỚI TAO THÊM VÀO ĐÂY <<<
+    // LOG KHI KẾT NỐI MỚI ĐÃ THÀNH CÔNG
+    console.log("✅ Kết nối mới đã được thiết lập và cache lại thành công.");
+
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+  
+  return cached.conn;
+}
+
+module.exports = connectDb;
