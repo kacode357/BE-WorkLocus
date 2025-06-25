@@ -21,4 +21,6 @@ router.post("/create-employee", AdminController.createEmployeeByAdminController)
 router.post("/attendances/search", AdminController.searchAllAttendancesController);
 router.post("/work-reports/search", AdminController.searchWorkReportsController);
 
+// === Route mới cho dashboard stats ===
+router.get("/dashboard-stats", AdminController.getDashboardStatsController);
 module.exports = router;

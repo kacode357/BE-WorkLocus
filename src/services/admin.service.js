@@ -294,7 +294,67 @@ const searchUsersService = async ({ searchCondition, pageInfo }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+// Service mới cho dashboard stats
+const getDashboardStatsService = async () => {
+    try {
+        // Đếm số nhân viên (employee) và quản trị (admin)
+        const employeeCount = await User.countDocuments({ role: 'employee', is_deleted: { $ne: true } });
+        const adminCount = await User.countDocuments({ role: 'admin', is_deleted: { $ne: true } });
+
+        // Đếm tổng số báo cáo công việc
+        const workReportCount = await WorkReport.countDocuments({ is_deleted: { $ne: true } });
+
+        // Tính giờ làm trung bình mỗi nhân viên
+        const employees = await User.find({ role: 'employee', is_deleted: { $ne: true } }).select('_id');
+        const employeeIds = employees.map(emp => emp._id);
+
+        // Lấy tất cả attendance của nhân viên
+        const attendances = await Attendance.find({ user_id: { $in: employeeIds } });
+        
+        let totalWorkHours = 0;
+        let totalAttendanceRecords = 0;
+
+        for (const attendance of attendances) {
+            if (attendance.total_work_time) {
+                // Giả sử total_work_time có format "X giờ Y phút"
+                const timeParts = attendance.total_work_time.split(' ');
+                let hours = 0;
+                let minutes = 0;
+
+                if (timeParts.length >= 2) {
+                    hours = parseInt(timeParts[0]) || 0;
+                    if (timeParts.length >= 4) {
+                        minutes = parseInt(timeParts[2]) || 0;
+                    }
+                    totalWorkHours += hours + (minutes / 60);
+                    totalAttendanceRecords++;
+                }
+            }
+        }
+
+        // Tính giờ trung bình mỗi nhân viên
+        const averageWorkHoursPerEmployee = employeeCount > 0 && totalAttendanceRecords > 0
+            ? (totalWorkHours / employeeCount).toFixed(2)
+            : 0;
+
+        return {
+            status: 200,
+            ok: true,
+            message: "Lấy thống kê dashboard thành công.",
+            data: {
+                employeeCount,
+                adminCount,
+                workReportCount,
+                averageWorkHoursPerEmployee: parseFloat(averageWorkHoursPerEmployee),
+            },
+        };
+    } catch (error) {
+        console.error("ERROR in getDashboardStatsService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
+    getDashboardStatsService,
     searchUsersService,
     blockUserService,
     unblockUserService,

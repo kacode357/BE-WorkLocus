@@ -61,7 +61,11 @@ const searchWorkReportsController = (req, res) => {
 const searchUsersController = (req, res) => {
     handleRequest(() => AdminService.searchUsersService(req.body), res);
 };
+const getDashboardStatsController = (req, res) => {
+    handleRequest(() => AdminService.getDashboardStatsService(), res);
+};
 module.exports = {
+    getDashboardStatsController,
     searchUsersController,
     blockUserController,
     unblockUserController,
