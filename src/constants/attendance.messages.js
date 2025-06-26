@@ -7,6 +7,7 @@ const ATTENDANCE_MESSAGES = {
     CHECK_OUT_SUCCESS: "Check-out thành công!",
     NOT_YET_CHECKED_IN: "Bạn chưa check-in ngày hôm nay.",
     ALREADY_CHECKED_OUT: "Bạn đã check-out ngày hôm nay rồi.",
+    ALREADY_CHECKED_OUT_FOR_TODAY: "Bạn đã check-out cho ngày hôm nay.", // Message mới đã thêm
 
     // Lịch sử
     GET_HISTORY_SUCCESS: "Lấy lịch sử điểm danh thành công.",
