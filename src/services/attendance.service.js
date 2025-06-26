@@ -5,36 +5,58 @@ const { GENERAL_MESSAGES } = require("../constants/auth.messages");
 // HÀM MỚI: Kiểm tra trạng thái chấm công trong ngày
 const getAttendanceStatusService = async ({ userId }) => {
     try {
+        // Lấy ngày hôm nay, set về đầu ngày (00:00:00)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Tìm bản ghi chấm công của hôm nay mà CHƯA check-out
+        // Bước 1: Tìm BẤT KỲ bản ghi chấm công nào của hôm nay
+        // Bỏ điều kiện check_out_time: null để tìm cả record đã check-out rồi
         const todaysAttendance = await Attendance.findOne({
             user_id: userId,
             work_date: today,
-            check_out_time: null, // Điều kiện quan trọng
         });
 
-        if (todaysAttendance) {
-            // Nếu tìm thấy, tức là đã check-in
-            return {
-                status: 200,
-                ok: true,
-                message: ATTENDANCE_MESSAGES.ALREADY_CHECKED_IN,
-                data: {
-                    isCheckedIn: true,
-                    checkInTime: todaysAttendance.check_in_time,
-                },
-            };
-        } else {
-            // Nếu không tìm thấy, tức là chưa check-in hoặc đã check-out
+        // Bước 2: Phân tích kết quả tìm được
+        if (!todaysAttendance) {
+            // TRẠNG THÁI 1: Chưa check-in trong ngày
             return {
                 status: 200,
                 ok: true,
                 message: ATTENDANCE_MESSAGES.NOT_YET_CHECKED_IN,
                 data: {
+                    status: 'NOT_CHECKED_IN', // Trạng thái rõ ràng
                     isCheckedIn: false,
-                    checkInTime: null,
+                    isCheckedOut: false,
+                },
+            };
+        }
+
+        if (todaysAttendance.check_out_time) {
+            // TRẠNG THÁI 2: Đã check-out
+            return {
+                status: 200,
+                ok: true,
+                message: ATTENDANCE_MESSAGES.ALREADY_CHECKED_OUT,
+                data: {
+                    status: 'CHECKED_OUT', // Trạng thái rõ ràng
+                    isCheckedIn: true,
+                    isCheckedOut: true,
+                    checkInTime: todaysAttendance.check_in_time,
+                    checkOutTime: todaysAttendance.check_out_time,
+                    totalWorkTime: todaysAttendance.total_work_time,
+                },
+            };
+        } else {
+            // TRẠNG THÁI 3: Đã check-in và đang làm việc
+            return {
+                status: 200,
+                ok: true,
+                message: ATTENDANCE_MESSAGES.ALREADY_CHECKED_IN,
+                data: {
+                    status: 'CHECKED_IN', // Trạng thái rõ ràng
+                    isCheckedIn: true,
+                    isCheckedOut: false,
+                    checkInTime: todaysAttendance.check_in_time,
                 },
             };
         }
