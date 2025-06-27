@@ -21,6 +21,13 @@ const userSchema = new mongoose.Schema(
       required: true,
       default: "employee",
     },
+    // << TRƯỜNG MỚI ĐƯỢC THÊM VÀO >>
+    // Đơn giá lương theo ngày của nhân viên (ví dụ: 300000 VNĐ/ngày)
+    base_salary_per_day: {
+      type: Number,
+      required: true,
+      default: 0, 
+    },
     image_url: {
       type: String,
       default: null,
@@ -33,7 +40,7 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-      refresh_token: {
+    refresh_token: {
       type: String,
       default: null,
     },

@@ -1,7 +1,7 @@
-// File: src/routes/api.js (PHIÊN BẢN MỚI DÙNG ROUTER)
+// File: src/routes/api.js
 
 const express = require('express');
-const router = express.Router(); // Dùng Router của Express, đây là cách làm đúng chuẩn
+const router = express.Router();
 
 // --- IMPORT CÁC FILE ROUTE CON ---
 const CheckApi = require("./checkapi.route");
@@ -10,18 +10,19 @@ const userRoutes = require("./user.route");
 const adminRoutes = require("./admin.route");
 const attendanceRoutes = require("./attendance.route");
 const workReportRoutes = require("./workReport.route");
+const performanceReviewRoutes = require("./performanceReview.route");
+const payrollRoutes = require("./payroll.route");
+const performanceBonusRoutes = require("./performanceBonus.route");
 
-/**
- * Gán các route con vào router chính.
- * Không cần hàm initRoute(app) nữa.
- * Mọi thứ giờ được đóng gói trong cái 'router' này.
- */
 router.use("", CheckApi);
 router.use("/api/auth", authRoutes);
 router.use("/api/users", userRoutes);
 router.use("/api/admin", adminRoutes);
 router.use("/api/attendances", attendanceRoutes);
 router.use("/api/work-reports", workReportRoutes);
+router.use("/api/reviews", performanceReviewRoutes);
+router.use("/api/payroll", payrollRoutes);
+router.use("/api/bonuses", performanceBonusRoutes);
 
 // Export cái router đã được cấu hình ra ngoài
 module.exports = router;
