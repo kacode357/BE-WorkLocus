@@ -58,16 +58,48 @@ const searchBonusesService = async ({ searchCondition, pageInfo }) => {
 
 // Tạo một mức thưởng mới
 const createBonusService = async (bonusData) => {
-    const { grade, bonus_amount, description } = bonusData;
-    if (!grade || bonus_amount === undefined) {
-        return { status: 400, ok: false, message: "Grade và bonus_amount là bắt buộc." };
+    try {
+        const { grade, bonus_amount, description } = bonusData;
+        if (!grade || bonus_amount === undefined) {
+            return { status: 400, ok: false, message: "Grade và bonus_amount là bắt buộc." };
+        }
+
+        // Bước 1: Tìm xem có hạng nào trùng tên không, bất kể trạng thái active
+        const existingGrade = await PerformanceBonus.findOne({ grade: grade.toUpperCase() });
+
+        if (existingGrade) {
+            // Bước 2a: Nếu tìm thấy và nó đang active, báo lỗi như cũ
+            if (existingGrade.is_active) {
+                return { status: 409, ok: false, message: `Hạng '${grade}' đã tồn tại và đang hoạt động.` };
+            } else {
+                // Bước 2b: Nếu tìm thấy nhưng nó đang INACTIVE (đã bị xóa mềm)
+                // -> "Hồi sinh" nó bằng cách cập nhật lại thông tin và set is_active = true
+                const reactivatedBonus = await PerformanceBonus.findOneAndUpdate(
+                    { grade: grade.toUpperCase() },
+                    {
+                        $set: {
+                            bonus_amount: bonus_amount,
+                            description: description,
+                            is_active: true // Kích hoạt lại
+                        }
+                    },
+                    { new: true } // Trả về document sau khi đã cập nhật
+                );
+                return { status: 200, ok: true, message: `Hạng '${grade}' đã được khôi phục và cập nhật thành công.`, data: reactivatedBonus };
+            }
+        } else {
+            // Bước 3: Nếu không tìm thấy bất kỳ hạng nào trùng tên, tạo mới hoàn toàn
+            const newBonus = await PerformanceBonus.create({
+                grade: grade.toUpperCase(),
+                bonus_amount,
+                description
+            });
+            return { status: 201, ok: true, message: "Tạo mức thưởng mới thành công.", data: newBonus };
+        }
+    } catch (error) {
+        console.error("ERROR in createBonusService:", error);
+        return { status: 500, ok: false, message: "Lỗi hệ thống khi tạo mức thưởng." };
     }
-    const existingGrade = await PerformanceBonus.findOne({ grade });
-    if (existingGrade) {
-        return { status: 409, ok: false, message: `Hạng '${grade}' đã tồn tại.` };
-    }
-    const newBonus = await PerformanceBonus.create({ grade, bonus_amount, description });
-    return { status: 201, ok: true, message: "Tạo mức thưởng mới thành công.", data: newBonus };
 };
 
 // Cập nhật một mức thưởng
