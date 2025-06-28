@@ -91,22 +91,22 @@ const getUserPayrollsService = async ({ userId, searchCondition, pageInfo }) => 
         const { pageNum, pageSize } = pageInfo || {};
 
         const page = parseInt(pageNum) || 1;
-        const limit = parseInt(pageSize) || 10;
+        const limit = parseInt(pageSize) || 10; // Mặc định 10 record/trang
         const skip = (page - 1) * limit;
 
-        // --- ĐIỂM KHÁC BIỆT CHÍNH ---
-        // Query chỉ tìm lương của user_id lấy từ token, không phải từ body request
-        // Điều này đảm bảo user chỉ xem được lương của chính mình.
+        // --- ĐIỂM BẢO MẬT QUAN TRỌNG ---
+        // Query luôn bắt đầu với user_id lấy từ token.
+        // Điều này đảm bảo user chỉ thấy được lương của chính mình.
         const queryConditions = { user_id: userId };
 
-        // Thêm điều kiện lọc theo tháng, năm nếu có
+        // Thêm điều kiện lọc theo tháng, năm nếu user cung cấp
         if (month) queryConditions.month = parseInt(month);
         if (year) queryConditions.year = parseInt(year);
 
-        // Đếm tổng số bản ghi khớp điều kiện
+        // Đếm tổng số bản ghi khớp điều kiện để phân trang
         const totalRecords = await Payroll.countDocuments(queryConditions);
 
-        // Lấy dữ liệu lương, không populate user_id nữa vì đã biết là chính nó rồi
+        // Lấy dữ liệu lương theo điều kiện, sắp xếp mới nhất lên đầu
         const records = await Payroll.find(queryConditions)
             .select('-user_id') // Bỏ trường user_id khỏi kết quả cho gọn
             .sort({ year: -1, month: -1 })
@@ -135,4 +135,5 @@ module.exports = {
     updateProfileService,
     changePasswordService,
     updateEmployeeBankInfoService,
+    getUserPayrollsService,
 };
