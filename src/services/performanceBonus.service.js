@@ -58,25 +58,24 @@ const searchBonusesService = async ({ searchCondition, pageInfo }) => {
 
 // Tạo một mức thưởng mới
 const createBonusService = async (bonusData) => {
+    // << SỬA Ở ĐÂY: Đưa dòng destructuring ra ngoài khối try >>
+    // Bằng cách này, 'grade' sẽ có thể được truy cập ở cả khối try và catch
+    const { grade, bonus_amount, description } = bonusData || {};
+
     try {
-        const { grade, bonus_amount, description } = bonusData;
         if (!grade || bonus_amount === undefined) {
             return { status: 400, ok: false, message: "Grade và bonus_amount là bắt buộc." };
         }
 
-        // Bước 1: Chỉ cần kiểm tra xem có hạng nào đang ACTIVE trùng tên không
         const existingActiveGrade = await PerformanceBonus.findOne({ 
             grade: grade.toUpperCase(), 
             is_active: true 
         });
 
-        // Bước 2: Nếu tìm thấy một hạng đang active, báo lỗi.
         if (existingActiveGrade) {
             return { status: 409, ok: false, message: `Hạng '${grade}' đã tồn tại và đang hoạt động.` };
         }
         
-        // Bước 3: Nếu không tìm thấy hạng nào đang active, cứ tạo mới.
-        // Kệ những cái cũ đã is_active: false.
         const newBonus = await PerformanceBonus.create({
             grade: grade.toUpperCase(),
             bonus_amount,
@@ -85,8 +84,8 @@ const createBonusService = async (bonusData) => {
         return { status: 201, ok: true, message: "Tạo mức thưởng mới thành công.", data: newBonus };
 
     } catch (error) {
-        // Xử lý lỗi nếu index unique bị vi phạm (dù logic đã check nhưng để cho chắc)
         if (error.code === 11000) {
+             // Giờ khối catch đã có thể thấy biến 'grade'
              return { status: 409, ok: false, message: `Hạng '${grade}' đã tồn tại và đang hoạt động.` };
         }
         console.error("ERROR in createBonusService:", error);
