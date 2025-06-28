@@ -1,4 +1,5 @@
 const User = require("../models/user.model");
+const Payroll = require("../models/payroll.model");
 const bcrypt = require("bcrypt");
 const { USER_MESSAGES } = require("../constants/user.messages");
 const { GENERAL_MESSAGES } = require("../constants/auth.messages");
@@ -85,7 +86,6 @@ const updateEmployeeBankInfoService = async ({ userIdToUpdate, bankData }) => {
 };
 const getUserPayrollsService = async ({ userId, searchCondition, pageInfo }) => {
     try {
-        // Lấy điều kiện lọc và phân trang từ input
         const { month, year } = searchCondition || {};
         const { pageNum, pageSize } = pageInfo || {};
 
@@ -93,45 +93,43 @@ const getUserPayrollsService = async ({ userId, searchCondition, pageInfo }) => 
         const limit = parseInt(pageSize) || 10;
         const skip = (page - 1) * limit;
 
-        // --- ĐIỂM KHÁC BIỆT CHÍNH ---
-        // Query chỉ tìm lương của user_id lấy từ token, không phải từ body request
-        // Điều này đảm bảo user chỉ xem được lương của chính mình.
+        // Query is always based on userId from token, not from client body
         const queryConditions = { user_id: userId };
 
-        // Thêm điều kiện lọc theo tháng, năm nếu có
-        if (month) queryConditions.month = parseInt(month);
-        if (year) queryConditions.year = parseInt(year);
+        // Add other filter conditions if present
+        if (month) queryConditions.month = month;
+        if (year) queryConditions.year = year;
 
-        // Đếm tổng số bản ghi khớp điều kiện
+        // Count total records for pagination
         const totalRecords = await Payroll.countDocuments(queryConditions);
-
-        // Lấy dữ liệu lương, không populate user_id nữa vì đã biết là chính nó rồi
+        
+        // Get records list with pagination
         const records = await Payroll.find(queryConditions)
-            .select('-user_id') // Bỏ trường user_id khỏi kết quả cho gọn
-            .sort({ year: -1, month: -1 })
+            .sort({ year: -1, month: -1, created_at: -1 }) // Sort newest payrolls first
             .skip(skip)
             .limit(limit);
 
         return {
-            status: 200,
-            ok: true,
-            message: "Lấy lịch sử lương thành công.",
+            status: 200, ok: true, message: "Payroll history fetched successfully.",
             data: {
                 records,
-                pagination: {
-                    currentPage: page,
-                    totalPages: Math.ceil(totalRecords / limit),
-                    totalRecords
+                pagination: { 
+                    currentPage: page, 
+                    totalPages: Math.ceil(totalRecords / limit), 
+                    totalRecords 
                 },
             },
         };
     } catch (error) {
         console.error("ERROR in getUserPayrollsService:", error);
-        return { status: 500, ok: false, message: "Lỗi hệ thống khi lấy lịch sử lương." };
+        return { status: 500, ok: false, message: "System error while fetching payroll history." };
     }
 };
+
 module.exports = {
     updateProfileService,
     changePasswordService,
     updateEmployeeBankInfoService,
+    getUserPayrollsService,
+ 
 };

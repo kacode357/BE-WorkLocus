@@ -34,19 +34,23 @@ const updateEmployeeBankInfoController = (req, res) => {
     }), res);
 };
 const getUserPayrollsController = (req, res) => {
-    // Lấy userId từ token đã được xác thực
-    const userId = req.user._id; 
-    const { searchCondition, pageInfo } = req.body;
+    // Lấy ID của user đang đăng nhập từ token (do middleware verifyToken thêm vào)
+    const userId = req.user.id; // hoặc req.user._id tùy cấu hình token của mày
     
+    // Lấy điều kiện tìm kiếm và phân trang từ body
+    const { month, year, pageNum, pageSize } = req.body;
+    
+    // Gọi sang service với các tham số đã được xác thực và chuẩn bị
     handleRequest(() => UserService.getUserPayrollsService({
-        userId,
-        searchCondition,
-        pageInfo
+        userId, // ID an toàn từ token
+        searchCondition: { month, year },
+        pageInfo: { pageNum, pageSize }
     }), res);
 };
+
 module.exports = {
     updateProfileController,
     changePasswordController,
     updateEmployeeBankInfoController,
-    
+     getUserPayrollsController,
 };
