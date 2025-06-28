@@ -11,6 +11,6 @@ const { verifyToken, checkAdmin } = require("../middleware/auth.js");
 router.post('/calculate', verifyToken, checkAdmin, payrollController.calculatePayrollController);
 
 // Method: GET /api/payroll
-router.get('/', verifyToken, checkAdmin, payrollController.getPayrollsController);
+router.post('/search', verifyToken, checkAdmin, payrollController.searchPayrollsController);
 
 module.exports = router;

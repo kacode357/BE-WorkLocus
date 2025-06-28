@@ -23,15 +23,15 @@ const calculatePayrollController = (req, res) => {
 };
 
 // Controller để lấy lịch sử lương
-const getPayrollsController = (req, res) => {
-    const { user_id, month, year, pageNum, pageSize } = req.query;
-    handleRequest(() => PayrollService.getPayrollsService({
-        searchCondition: { user_id, month, year },
-        pageInfo: { pageNum, pageSize }
+const searchPayrollsController = (req, res) => {
+    const { searchCondition, pageInfo } = req.body;
+    handleRequest(() => PayrollService.searchPayrollsService({
+        searchCondition,
+        pageInfo
     }), res);
 };
 
 module.exports = {
     calculatePayrollController,
-    getPayrollsController,
+    searchPayrollsController,
 };

@@ -134,40 +134,62 @@ const calculatePayrollService = async (payrollInput) => {
     }
 };
 
-const getPayrollsService = async ({ searchCondition, pageInfo }) => {
+const searchPayrollsService = async ({ searchCondition, pageInfo }) => {
     try {
-        const { user_id, month, year } = searchCondition || {};
+        const { keyword, user_id, month, year } = searchCondition || {};
         const { pageNum, pageSize } = pageInfo || {};
+
         const page = parseInt(pageNum) || 1;
         const limit = parseInt(pageSize) || 10;
         const skip = (page - 1) * limit;
 
         const queryConditions = {};
-        if (user_id) queryConditions.user_id = user_id;
+
+        // Nếu có keyword (tên nhân viên), tìm ID của các user trước
+        if (keyword) {
+            const users = await User.find({ 
+                full_name: { $regex: keyword, $options: 'i' } 
+            }).select('_id');
+
+            const userIds = users.map(user => user._id);
+            if (userIds.length === 0) {
+                // Nếu không tìm thấy user nào, trả về mảng rỗng luôn cho nhanh
+                return { status: 200, ok: true, message: "Không tìm thấy nhân viên nào.", data: { records: [], pagination: { currentPage: 1, totalPages: 0, totalRecords: 0 } } };
+            }
+            queryConditions.user_id = { $in: userIds };
+        }
+
+        // Nếu client gửi thẳng user_id, thì dùng nó (ưu tiên hơn keyword)
+        if (user_id) {
+            queryConditions.user_id = user_id;
+        }
+
+        // Lọc theo tháng và năm
         if (month) queryConditions.month = month;
         if (year) queryConditions.year = year;
 
+        // Thực hiện truy vấn cuối cùng
         const totalRecords = await Payroll.countDocuments(queryConditions);
         const records = await Payroll.find(queryConditions)
             .populate('user_id', 'full_name email role')
-            .sort({ year: -1, month: -1, created_at: -1 }) // Sắp xếp theo ngày tạo mới nhất
+            .sort({ year: -1, month: -1, created_at: -1 })
             .skip(skip)
             .limit(limit);
         
         return {
-            status: 200, ok: true, message: PAYROLL_MESSAGES.GET_PAYROLLS_SUCCESS,
+            status: 200, ok: true, message: "Tìm kiếm lịch sử lương thành công.",
             data: {
                 records,
                 pagination: { currentPage: page, totalPages: Math.ceil(totalRecords / limit), totalRecords },
             },
         };
     } catch (error) {
-        console.error("ERROR in getPayrollsService:", error);
-        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+        console.error("ERROR in searchPayrollsService:", error);
+        return { status: 500, ok: false, message: "Lỗi hệ thống khi tìm kiếm lịch sử lương." };
     }
 }
 
 module.exports = {
     calculatePayrollService,
-    getPayrollsService,
+    searchPayrollsService,
 };
