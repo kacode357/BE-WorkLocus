@@ -48,5 +48,5 @@ module.exports = {
     updateProfileController,
     changePasswordController,
     updateEmployeeBankInfoController,
-    getUserPayrollsController
+    
 };

@@ -1,5 +1,4 @@
 const User = require("../models/user.model");
-const Payroll = require("../models/payroll.model");
 const bcrypt = require("bcrypt");
 const { USER_MESSAGES } = require("../constants/user.messages");
 const { GENERAL_MESSAGES } = require("../constants/auth.messages");
@@ -135,5 +134,4 @@ module.exports = {
     updateProfileService,
     changePasswordService,
     updateEmployeeBankInfoService,
-    getUserPayrollsService
 };
