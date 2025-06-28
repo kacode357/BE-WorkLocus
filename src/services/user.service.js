@@ -83,9 +83,56 @@ const updateEmployeeBankInfoService = async ({ userIdToUpdate, bankData }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const getUserPayrollsService = async ({ userId, searchCondition, pageInfo }) => {
+    try {
+        // Lấy điều kiện lọc và phân trang từ input
+        const { month, year } = searchCondition || {};
+        const { pageNum, pageSize } = pageInfo || {};
 
+        const page = parseInt(pageNum) || 1;
+        const limit = parseInt(pageSize) || 10;
+        const skip = (page - 1) * limit;
+
+        // --- ĐIỂM KHÁC BIỆT CHÍNH ---
+        // Query chỉ tìm lương của user_id lấy từ token, không phải từ body request
+        // Điều này đảm bảo user chỉ xem được lương của chính mình.
+        const queryConditions = { user_id: userId };
+
+        // Thêm điều kiện lọc theo tháng, năm nếu có
+        if (month) queryConditions.month = parseInt(month);
+        if (year) queryConditions.year = parseInt(year);
+
+        // Đếm tổng số bản ghi khớp điều kiện
+        const totalRecords = await Payroll.countDocuments(queryConditions);
+
+        // Lấy dữ liệu lương, không populate user_id nữa vì đã biết là chính nó rồi
+        const records = await Payroll.find(queryConditions)
+            .select('-user_id') // Bỏ trường user_id khỏi kết quả cho gọn
+            .sort({ year: -1, month: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        return {
+            status: 200,
+            ok: true,
+            message: "Lấy lịch sử lương thành công.",
+            data: {
+                records,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalRecords / limit),
+                    totalRecords
+                },
+            },
+        };
+    } catch (error) {
+        console.error("ERROR in getUserPayrollsService:", error);
+        return { status: 500, ok: false, message: "Lỗi hệ thống khi lấy lịch sử lương." };
+    }
+};
 module.exports = {
     updateProfileService,
     changePasswordService,
-    updateEmployeeBankInfoService
+    updateEmployeeBankInfoService,
+    getUserPayrollsService
 };

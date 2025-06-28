@@ -14,5 +14,7 @@ router.put("/change-password", UserController.changePasswordController);
 
 // Route để người dùng TỰ cập nhật thông tin ngân hàng
 router.put("/bank-info", UserController.updateEmployeeBankInfoController);
+// Route để người dùng TỰ xem lịch sử lương của mình
+router.post("/payrolls/search", UserController.getUserPayrollsController);
 
 module.exports = router;

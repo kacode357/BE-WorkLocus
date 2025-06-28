@@ -33,10 +33,20 @@ const updateEmployeeBankInfoController = (req, res) => {
         bankData: req.body,
     }), res);
 };
-
+const getUserPayrollsController = (req, res) => {
+    // Lấy userId từ token đã được xác thực
+    const userId = req.user._id; 
+    const { searchCondition, pageInfo } = req.body;
+    
+    handleRequest(() => UserService.getUserPayrollsService({
+        userId,
+        searchCondition,
+        pageInfo
+    }), res);
+};
 module.exports = {
     updateProfileController,
     changePasswordController,
     updateEmployeeBankInfoController,
-   
+    getUserPayrollsController
 };
