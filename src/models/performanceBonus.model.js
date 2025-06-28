@@ -2,25 +2,23 @@ const mongoose = require("mongoose");
 
 const performanceBonusSchema = new mongoose.Schema(
     {
-        // Tên hạng, ví dụ: "A", "B", "S"...
         grade: {
             type: String,
             required: true,
-            unique: true, // Mỗi hạng chỉ có 1 mức thưởng
-            uppercase: true, // Tự động viết hoa
+            uppercase: true,
+            // << BỎ unique: true ở đây >>
         },
-        // Mức tiền thưởng tương ứng
         bonus_amount: {
             type: Number,
             required: true,
             default: 0,
         },
         description: {
-            type: String, // Mô tả thêm nếu cần
+            type: String,
         },
         is_active: {
             type: Boolean,
-            default: true, // Có thể tắt/bật một mức thưởng
+            default: true,
         }
     },
     {
@@ -30,5 +28,15 @@ const performanceBonusSchema = new mongoose.Schema(
         }
     }
 );
+
+// << THÊM INDEX MỚI Ở ĐÂY >>
+// Tạo một Partial Unique Index
+// Nó chỉ bắt lỗi trùng lặp (unique) trên trường 'grade'
+// đối với các document có is_active: true
+performanceBonusSchema.index(
+    { grade: 1 }, 
+    { unique: true, partialFilterExpression: { is_active: true } }
+);
+
 
 module.exports = mongoose.model("PerformanceBonus", performanceBonusSchema);
