@@ -7,7 +7,7 @@ const { verifyToken, checkAdmin } = require('../middleware/auth.js');
 router.use(verifyToken, checkAdmin);
 
 // Định nghĩa các route CRUD
-router.get('/', bonusController.getAllBonuses);
+router.post('/search', bonusController.searchBonuses);
 router.post('/', bonusController.createBonus);
 router.put('/:grade', bonusController.updateBonus);
 router.delete('/:grade', bonusController.deleteBonus);

@@ -15,8 +15,10 @@ const handleRequest = async (serviceCall, res) => {
 
 // << BƯỚC 1: ĐỊNH NGHĨA TẤT CẢ CÁC HÀM CONTROLLER NHƯ NHỮNG HẰNG SỐ >>
 
-const getAllBonuses = (req, res) => {
-    handleRequest(() => BonusService.getAllBonusesService(), res);
+const searchBonuses = (req, res) => {
+    // Lấy searchCondition và pageInfo từ body của request POST
+    const { searchCondition, pageInfo } = req.body;
+    handleRequest(() => BonusService.searchBonusesService({ searchCondition, pageInfo }), res);
 };
 
 const createBonus = (req, res) => {
@@ -35,7 +37,7 @@ const deleteBonus = (req, res) => {
 // << BƯỚC 2: EXPORT TẤT CẢ RA NGOÀI TRONG MỘT OBJECT DUY NHẤT >>
 // Cách này nhất quán và được khuyến khích
 module.exports = {
-    getAllBonuses,
+    searchBonuses,
     createBonus,
     updateBonus,
     deleteBonus,
