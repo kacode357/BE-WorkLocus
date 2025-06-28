@@ -29,10 +29,9 @@ const updateBonus = (req, res) => {
     handleRequest(() => BonusService.updateBonusService(req.params.grade.toUpperCase(), req.body), res);
 };
 
-const deleteBonus = (req, res) => {
-    handleRequest(() => BonusService.deleteBonusService(req.params.grade.toUpperCase()), res);
+const softDeleteBonus = (req, res) => {
+    handleRequest(() => BonusService.softDeleteBonusService(req.params.grade.toUpperCase()), res);
 };
-
 
 // << BƯỚC 2: EXPORT TẤT CẢ RA NGOÀI TRONG MỘT OBJECT DUY NHẤT >>
 // Cách này nhất quán và được khuyến khích
@@ -40,5 +39,5 @@ module.exports = {
     searchBonuses,
     createBonus,
     updateBonus,
-    deleteBonus,
+    softDeleteBonus,
 };

@@ -10,6 +10,6 @@ router.use(verifyToken, checkAdmin);
 router.post('/search', bonusController.searchBonuses);
 router.post('/', bonusController.createBonus);
 router.put('/:grade', bonusController.updateBonus);
-router.delete('/:grade', bonusController.deleteBonus);
+router.delete('/:grade', bonusController.softDeleteBonus);
 
 module.exports = router;

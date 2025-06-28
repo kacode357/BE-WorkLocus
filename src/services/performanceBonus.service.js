@@ -85,17 +85,30 @@ const updateBonusService = async (grade, updateData) => {
 };
 
 // Xóa một mức thưởng
-const deleteBonusService = async (grade) => {
-    const deletedBonus = await PerformanceBonus.findOneAndDelete({ grade });
-    if (!deletedBonus) {
-        return { status: 404, ok: false, message: `Không tìm thấy hạng '${grade}'.` };
+const softDeleteBonusService = async (grade) => {
+    try {
+        // Tìm một hạng đang active và cập nhật nó thành inactive
+        const deactivatedBonus = await PerformanceBonus.findOneAndUpdate(
+            { grade: grade, is_active: true }, // Chỉ "xóa" những cái đang active
+            { $set: { is_active: false } },    // Hành động: set is_active = false
+            { new: true }                      // Trả về document sau khi update
+        );
+
+        if (!deactivatedBonus) {
+            return { status: 404, ok: false, message: `Không tìm thấy hạng '${grade}' đang hoạt động để vô hiệu hóa.` };
+        }
+        
+        // Đổi message cho đúng với hành động
+        return { status: 200, ok: true, message: `Vô hiệu hóa hạng '${grade}' thành công.` };
+    } catch(error) {
+         console.error("ERROR in softDeleteBonusService:", error);
+         return { status: 500, ok: false, message: "Lỗi hệ thống khi vô hiệu hóa mức thưởng." };
     }
-    return { status: 200, ok: true, message: `Xóa hạng '${grade}' thành công.` };
 };
 
 module.exports = {
     searchBonusesService,
     createBonusService,
     updateBonusService,
-    deleteBonusService,
+    softDeleteBonusService,
 };
