@@ -70,7 +70,11 @@ const updateEmployeeSalaryController = (req, res) => {
         salaryData: req.body,
     }), res);
 };
-
+const getEmployeeDetailsByIdController = (req, res) => {
+    handleRequest(() => AdminService.getEmployeeDetailsByIdService({ 
+        userIdToView: req.params.id // Lấy id từ URL
+    }), res);
+};
 
 module.exports = {
     getDashboardStatsController,
@@ -84,5 +88,5 @@ module.exports = {
     searchAllAttendancesController,
     searchWorkReportsController,
     updateEmployeeSalaryController,
-    
+    getEmployeeDetailsByIdController
 };

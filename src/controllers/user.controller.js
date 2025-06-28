@@ -33,14 +33,10 @@ const updateEmployeeBankInfoController = (req, res) => {
         bankData: req.body,
     }), res);
 };
-const getUserProfileController = (req, res) => {
-    handleRequest(() => UserService.getUserProfileService({
-        userId: req.user._id // Luôn lấy ID của người dùng đã đăng nhập
-    }), res);
-};
+
 module.exports = {
     updateProfileController,
     changePasswordController,
     updateEmployeeBankInfoController,
-    getUserProfileController,
+   
 };

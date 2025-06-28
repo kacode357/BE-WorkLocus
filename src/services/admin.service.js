@@ -374,7 +374,20 @@ const updateEmployeeSalaryService = async ({ userIdToUpdate, salaryData }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const getEmployeeDetailsByIdService = async ({ userIdToView }) => {
+    try {
+        const user = await User.findById(userIdToView)
+            .select('-password -refresh_token'); // Không trả về password
 
+        if (!user || user.role === 'admin') {
+            return { status: 404, ok: false, message: ADMIN_MESSAGES.USER_NOT_FOUND };
+        }
+        return { status: 200, ok: true, message: "Lấy thông tin chi tiết nhân viên thành công.", data: user };
+    } catch (error) {
+        console.error("ERROR in getEmployeeDetailsByIdService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 
 module.exports = {
     getDashboardStatsService,
@@ -388,5 +401,5 @@ module.exports = {
     searchAllAttendancesService,
     searchWorkReportsService,
     updateEmployeeSalaryService,
-  
+    getEmployeeDetailsByIdService
 };
