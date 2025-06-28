@@ -64,10 +64,17 @@ const searchUsersController = (req, res) => {
 const getDashboardStatsController = (req, res) => {
     handleRequest(() => AdminService.getDashboardStatsService(), res);
 };
-const updateEmployeeByAdminController = (req, res) => {
-    handleRequest(() => AdminService.updateEmployeeByAdminService({
-        userIdToUpdate: req.params.id, // Lấy id từ URL
-        updateData: req.body,      // Lấy dữ liệu cần cập nhật từ body
+const updateEmployeeSalaryController = (req, res) => {
+    handleRequest(() => AdminService.updateEmployeeSalaryService({
+        userIdToUpdate: req.params.id,
+        salaryData: req.body,
+    }), res);
+};
+
+const updateEmployeeBankInfoController = (req, res) => {
+    handleRequest(() => AdminService.updateEmployeeBankInfoService({
+        userIdToUpdate: req.params.id,
+        bankData: req.body,
     }), res);
 };
 module.exports = {
@@ -81,5 +88,6 @@ module.exports = {
     createEmployeeByAdminController,
     searchAllAttendancesController,
     searchWorkReportsController,
-    updateEmployeeByAdminController,
+    updateEmployeeSalaryController,
+    updateEmployeeBankInfoController,
 };
