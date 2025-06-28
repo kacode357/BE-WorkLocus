@@ -83,8 +83,27 @@ const updateEmployeeBankInfoService = async ({ userIdToUpdate, bankData }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const getUserProfileService = async ({ userId }) => {
+    try {
+        // Tìm user bằng ID lấy từ token
+        const user = await User.findById(userId)
+            // Lấy tất cả các trường TRỪ password và refresh_token
+            .select('-password -refresh_token');
+
+        if (!user) {
+            return { status: 404, ok: false, message: USER_MESSAGES.USER_NOT_FOUND };
+        }
+
+        return { status: 200, ok: true, message: USER_MESSAGES.GET_PROFILE_SUCCESS, data: user };
+
+    } catch (error) {
+        console.error("ERROR in getUserProfileService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
     updateProfileService,
     changePasswordService,
-    updateEmployeeBankInfoService
+    updateEmployeeBankInfoService,
+    getUserProfileService
 };
