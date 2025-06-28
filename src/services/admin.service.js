@@ -375,30 +375,7 @@ const updateEmployeeSalaryService = async ({ userIdToUpdate, salaryData }) => {
     }
 };
 
-// Service chỉ để cập nhật THÔNG TIN NGÂN HÀNG
-const updateEmployeeBankInfoService = async ({ userIdToUpdate, bankData }) => {
-     try {
-        const user = await User.findById(userIdToUpdate);
-        if (!user || user.role === 'admin') {
-            return { status: 404, ok: false, message: ADMIN_MESSAGES.USER_NOT_FOUND };
-        }
 
-        const allowedUpdates = ['bank_name', 'bank_account_number'];
-        Object.keys(bankData).forEach(key => {
-            if (allowedUpdates.includes(key)) {
-                user[key] = bankData[key];
-            }
-        });
-
-        await user.save();
-        const userResponse = user.toObject();
-        delete userResponse.password;
-        return { status: 200, ok: true, message: "Cập nhật thông tin ngân hàng thành công.", data: userResponse };
-    } catch (error) {
-        console.error("ERROR in updateEmployeeBankInfoService:", error);
-        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
-    }
-};
 module.exports = {
     getDashboardStatsService,
     searchUsersService,
@@ -411,5 +388,5 @@ module.exports = {
     searchAllAttendancesService,
     searchWorkReportsService,
     updateEmployeeSalaryService,
-    updateEmployeeBankInfoService,
+  
 };

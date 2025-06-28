@@ -17,7 +17,7 @@ router.post("/create-admin", AdminController.createAdminAccountController);
 router.post("/create-employee", AdminController.createEmployeeByAdminController);
 
 router.put("/users/:id/salary", AdminController.updateEmployeeSalaryController);
-router.put("/users/:id/bank-info", AdminController.updateEmployeeBankInfoController);
+
 // === Các route tìm kiếm/báo cáo ===
 router.post("/attendances/search", AdminController.searchAllAttendancesController);
 router.post("/work-reports/search", AdminController.searchWorkReportsController);

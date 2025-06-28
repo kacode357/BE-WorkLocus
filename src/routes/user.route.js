@@ -12,4 +12,6 @@ router.put("/profile", UserController.updateProfileController);
 // Route để người dùng tự đổi mật khẩu
 router.put("/change-password", UserController.changePasswordController);
 
+router.put("/users/:id/bank-info", UserController.updateEmployeeBankInfoController);
+
 module.exports = router;

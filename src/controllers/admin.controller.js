@@ -71,12 +71,7 @@ const updateEmployeeSalaryController = (req, res) => {
     }), res);
 };
 
-const updateEmployeeBankInfoController = (req, res) => {
-    handleRequest(() => AdminService.updateEmployeeBankInfoService({
-        userIdToUpdate: req.params.id,
-        bankData: req.body,
-    }), res);
-};
+
 module.exports = {
     getDashboardStatsController,
     searchUsersController,
@@ -89,5 +84,5 @@ module.exports = {
     searchAllAttendancesController,
     searchWorkReportsController,
     updateEmployeeSalaryController,
-    updateEmployeeBankInfoController,
+    
 };

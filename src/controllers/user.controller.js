@@ -27,8 +27,14 @@ const changePasswordController = (req, res) => {
     const { currentPassword, newPassword } = req.body;
     handleRequest(() => UserService.changePasswordService({ userId, currentPassword, newPassword }), res);
 };
-
+const updateEmployeeBankInfoController = (req, res) => {
+    handleRequest(() => UserService.updateEmployeeBankInfoService({
+        userIdToUpdate: req.params.id,
+        bankData: req.body,
+    }), res);
+};
 module.exports = {
     updateProfileController,
     changePasswordController,
+    updateEmployeeBankInfoController
 };
