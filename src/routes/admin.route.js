@@ -16,7 +16,7 @@ router.delete("/users/:id", AdminController.softDeleteUserController);
 router.post("/create-admin", AdminController.createAdminAccountController);
 router.post("/create-employee", AdminController.createEmployeeByAdminController);
 
-
+router.put("/users/:id", AdminController.updateEmployeeByAdminController);
 // === Các route tìm kiếm/báo cáo ===
 router.post("/attendances/search", AdminController.searchAllAttendancesController);
 router.post("/work-reports/search", AdminController.searchWorkReportsController);

@@ -353,6 +353,38 @@ const getDashboardStatsService = async () => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const updateEmployeeByAdminService = async ({ userIdToUpdate, updateData }) => {
+    try {
+        const user = await User.findById(userIdToUpdate);
+        
+        // Không tìm thấy user, hoặc user đó là admin (không cho sửa admin khác bằng API này)
+        if (!user || user.role === 'admin') {
+            return { status: 404, ok: false, message: ADMIN_MESSAGES.USER_NOT_FOUND };
+        }
+
+        // Chỉ cho phép admin cập nhật một số trường nhất định để đảm bảo an toàn
+        const allowedUpdates = ['full_name', 'base_salary_per_day'];
+        
+        Object.keys(updateData).forEach(key => {
+            if (allowedUpdates.includes(key)) {
+                // Chỉ cập nhật nếu key được phép
+                user[key] = updateData[key];
+            }
+        });
+
+        // Lưu lại thông tin user đã được cập nhật
+        await user.save();
+
+        const userResponse = user.toObject();
+        delete userResponse.password; // Xóa các trường nhạy cảm trước khi trả về
+
+        return { status: 200, ok: true, message: "Cập nhật thông tin nhân viên thành công.", data: userResponse };
+
+    } catch (error) {
+        console.error("ERROR in updateEmployeeByAdminService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
     getDashboardStatsService,
     searchUsersService,
@@ -364,4 +396,5 @@ module.exports = {
     createEmployeeByAdminService,
     searchAllAttendancesService,
     searchWorkReportsService,
+    updateEmployeeByAdminService
 };
