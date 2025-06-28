@@ -6,7 +6,7 @@ const performanceBonusSchema = new mongoose.Schema(
             type: String,
             required: true,
             uppercase: true,
-            // << BỎ unique: true ở đây >>
+            unique: true, // << QUAY LẠI DÙNG unique: true ĐƠN GIẢN >>
         },
         bonus_amount: {
             type: Number,
@@ -29,14 +29,7 @@ const performanceBonusSchema = new mongoose.Schema(
     }
 );
 
-// << THÊM INDEX MỚI Ở ĐÂY >>
-// Tạo một Partial Unique Index
-// Nó chỉ bắt lỗi trùng lặp (unique) trên trường 'grade'
-// đối với các document có is_active: true
-performanceBonusSchema.index(
-    { grade: 1 }, 
-    { unique: true, partialFilterExpression: { is_active: true } }
-);
-
+// << BỎ ĐI INDEX CŨ >>
+// performanceBonusSchema.index( ... ); // Bỏ dòng này đi nếu có
 
 module.exports = mongoose.model("PerformanceBonus", performanceBonusSchema);

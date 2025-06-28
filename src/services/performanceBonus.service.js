@@ -58,24 +58,13 @@ const searchBonusesService = async ({ searchCondition, pageInfo }) => {
 
 // Tạo một mức thưởng mới
 const createBonusService = async (bonusData) => {
-    // << SỬA Ở ĐÂY: Đưa dòng destructuring ra ngoài khối try >>
-    // Bằng cách này, 'grade' sẽ có thể được truy cập ở cả khối try và catch
-    const { grade, bonus_amount, description } = bonusData || {};
-
     try {
+        const { grade, bonus_amount, description } = bonusData || {};
         if (!grade || bonus_amount === undefined) {
             return { status: 400, ok: false, message: "Grade và bonus_amount là bắt buộc." };
         }
 
-        const existingActiveGrade = await PerformanceBonus.findOne({ 
-            grade: grade.toUpperCase(), 
-            is_active: true 
-        });
-
-        if (existingActiveGrade) {
-            return { status: 409, ok: false, message: `Hạng '${grade}' đã tồn tại và đang hoạt động.` };
-        }
-        
+        // Logic giờ rất đơn giản: Cứ tạo mới
         const newBonus = await PerformanceBonus.create({
             grade: grade.toUpperCase(),
             bonus_amount,
@@ -84,8 +73,9 @@ const createBonusService = async (bonusData) => {
         return { status: 201, ok: true, message: "Tạo mức thưởng mới thành công.", data: newBonus };
 
     } catch (error) {
+        // Nếu có lỗi, khả năng cao nhất là lỗi trùng lặp do unique index
         if (error.code === 11000) {
-             // Giờ khối catch đã có thể thấy biến 'grade'
+             const { grade } = bonusData || {};
              return { status: 409, ok: false, message: `Hạng '${grade}' đã tồn tại và đang hoạt động.` };
         }
         console.error("ERROR in createBonusService:", error);
@@ -110,22 +100,28 @@ const updateBonusService = async (grade, updateData) => {
 // Xóa một mức thưởng
 const softDeleteBonusService = async (grade) => {
     try {
-        // Tìm một hạng đang active và cập nhật nó thành inactive
-        const deactivatedBonus = await PerformanceBonus.findOneAndUpdate(
-            { grade: grade, is_active: true }, // Chỉ "xóa" những cái đang active
-            { $set: { is_active: false } },    // Hành động: set is_active = false
-            { new: true }                      // Trả về document sau khi update
-        );
+        // Bước 1: Tìm bản ghi đang active để xóa
+        const bonusToDelete = await PerformanceBonus.findOne({ 
+            grade: grade.toUpperCase(), 
+            is_active: true 
+        });
 
-        if (!deactivatedBonus) {
-            return { status: 404, ok: false, message: `Không tìm thấy hạng '${grade}' đang hoạt động để vô hiệu hóa.` };
+        if (!bonusToDelete) {
+            return { status: 404, ok: false, message: `Không tìm thấy hạng '${grade}' đang hoạt động.` };
         }
+
+        // Bước 2: Sửa đổi các trường để vô hiệu hóa và làm cho nó độc nhất
+        bonusToDelete.is_active = false;
+        // Gắn thêm timestamp để grade trở nên độc nhất, giải phóng grade cũ
+        bonusToDelete.grade = `${bonusToDelete.grade}_deleted_${Date.now()}`;
+
+        // Bước 3: Lưu lại
+        await bonusToDelete.save();
         
-        // Đổi message cho đúng với hành động
         return { status: 200, ok: true, message: `Vô hiệu hóa hạng '${grade}' thành công.` };
     } catch(error) {
-         console.error("ERROR in softDeleteBonusService:", error);
-         return { status: 500, ok: false, message: "Lỗi hệ thống khi vô hiệu hóa mức thưởng." };
+       console.error("ERROR in softDeleteBonusService:", error);
+       return { status: 500, ok: false, message: "Lỗi hệ thống khi vô hiệu hóa mức thưởng." };
     }
 };
 
