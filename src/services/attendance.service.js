@@ -69,59 +69,73 @@ const getAttendanceStatusService = async ({ userId }) => {
 
 
 const checkInService = async ({ userId, checkInData }) => {
-    try {
-        const { latitude, longitude, reason } = checkInData;
-        if (latitude === undefined || longitude === undefined) {
-            return { status: 400, ok: false, message: "Không tìm thấy toạ độ của bạn để chấm công." };
-        }
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const existingAttendance = await Attendance.findOne({ user_id: userId, work_date: today });
-        if (existingAttendance) {
-            return { status: 409, ok: false, message: "Hôm nay bạn đã check-in rồi." };
-        }
+  try {
+    // Lấy dữ liệu ra
+    let { latitude, longitude, reason } = checkInData;
 
-        const workplace = await Workplace.findOne();
-        if (!workplace) {
-            return { status: 400, ok: false, message: "Địa điểm làm việc chưa được thiết lập." };
-        }
-        
-        const distance = getDistanceInMeters(latitude, longitude, workplace.latitude, workplace.longitude);
-        const MAX_DISTANCE_METERS = 50;
+    // === THÊM BƯỚC CHUYỂN ĐỔI VÀ KIỂM TRA ===
+    // Dùng parseFloat để chuyển chuỗi thành số
+    const numLatitude = parseFloat(latitude);
+    const numLongitude = parseFloat(longitude);
 
-        let newAttendanceData = {
-            user_id: userId,
-            check_in_time: new Date(),
-            work_date: today,
-            check_in_latitude: latitude,
-            check_in_longitude: longitude,
-            is_remote: false, // Mặc định là không phải từ xa
-        };
-        
-        let message = ATTENDANCE_MESSAGES.CHECK_IN_SUCCESS;
-
-        if (distance > MAX_DISTANCE_METERS) {
-            if (!reason) {
-                return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-in." };
-            }
-            newAttendanceData.is_remote = true;
-            newAttendanceData.request_reason = reason;
-            message = "Check-in từ xa thành công. Lý do của bạn đã được ghi nhận.";
-        }
-        
-        const newAttendance = await Attendance.create(newAttendanceData);
-        return { 
-            status: 201, 
-            ok: true, 
-            message, 
-            data: newAttendance 
-        };
-
-    } catch (error) {
-        console.error("ERROR in checkInService:", error);
-        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    // Kiểm tra xem sau khi chuyển đổi có phải là số hợp lệ không
+    if (isNaN(numLatitude) || isNaN(numLongitude)) {
+      return { status: 400, ok: false, message: "Tọa độ latitude hoặc longitude không hợp lệ." };
     }
+    // === KẾT THÚC PHẦN THÊM VÀO ===
+
+    if (latitude === undefined || longitude === undefined) {
+      return { status: 400, ok: false, message: "Không tìm thấy toạ độ của bạn để chấm công." };
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const existingAttendance = await Attendance.findOne({ user_id: userId, work_date: today });
+    if (existingAttendance) {
+      return { status: 409, ok: false, message: "Hôm nay bạn đã check-in rồi." };
+    }
+
+    const workplace = await Workplace.findOne();
+    if (!workplace) {
+      return { status: 400, ok: false, message: "Địa điểm làm việc chưa được thiết lập." };
+    }
+    
+    // Dùng biến đã được chuyển đổi để tính toán
+    const distance = getDistanceInMeters(numLatitude, numLongitude, workplace.latitude, workplace.longitude);
+    const MAX_DISTANCE_METERS = 50;
+
+    let newAttendanceData = {
+      user_id: userId,
+      check_in_time: new Date(),
+      work_date: today,
+      check_in_latitude: numLatitude, // Lưu dạng số
+      check_in_longitude: numLongitude, // Lưu dạng số
+      is_remote: false,
+    };
+    
+    let message = ATTENDANCE_MESSAGES.CHECK_IN_SUCCESS;
+
+    if (distance > MAX_DISTANCE_METERS) {
+      if (!reason) {
+        return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-in." };
+      }
+      newAttendanceData.is_remote = true;
+      newAttendanceData.request_reason = reason;
+      message = "Check-in từ xa thành công. Lý do của bạn đã được ghi nhận.";
+    }
+    
+    const newAttendance = await Attendance.create(newAttendanceData);
+    return { 
+      status: 201, 
+      ok: true, 
+      message, 
+      data: newAttendance 
+    };
+
+  } catch (error) {
+    console.error("ERROR in checkInService:", error);
+    return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+  }
 };
 
 const checkOutService = async ({ userId, checkOutData }) => {
