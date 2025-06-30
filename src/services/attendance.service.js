@@ -72,14 +72,14 @@ const checkInService = async ({ userId, checkInData }) => {
     try {
         const { latitude, longitude, reason } = checkInData;
         if (latitude === undefined || longitude === undefined) {
-            return { status: 400, ok: false, message: "Không tìm thấy toạ độ của mày để chấm công." };
+            return { status: 400, ok: false, message: "Không tìm thấy toạ độ của bạn để chấm công." };
         }
         
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const existingAttendance = await Attendance.findOne({ user_id: userId, work_date: today });
         if (existingAttendance) {
-            return { status: 409, ok: false, message: "Hôm nay mày đã check-in rồi." };
+            return { status: 409, ok: false, message: "Hôm nay bạn đã check-in rồi." };
         }
 
         const workplace = await Workplace.findOne();
@@ -103,11 +103,11 @@ const checkInService = async ({ userId, checkInData }) => {
 
         if (distance > MAX_DISTANCE_METERS) {
             if (!reason) {
-                return { status: 400, ok: false, message: "Mày đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-in." };
+                return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-in." };
             }
             newAttendanceData.is_remote = true;
             newAttendanceData.request_reason = reason;
-            message = "Check-in từ xa thành công. Lý do của mày đã được ghi nhận.";
+            message = "Check-in từ xa thành công. Lý do của bạn đã được ghi nhận.";
         }
         
         const newAttendance = await Attendance.create(newAttendanceData);
@@ -148,7 +148,7 @@ const checkOutService = async ({ userId, checkOutData }) => {
              if (workplace) {
                 const distance = getDistanceInMeters(latitude, longitude, workplace.latitude, workplace.longitude);
                 if (distance > 50 && !reason) {
-                     return { status: 400, ok: false, message: "Mày đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-out." };
+                     return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-out." };
                 }
              }
         }
