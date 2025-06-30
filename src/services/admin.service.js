@@ -409,15 +409,25 @@ const updateWorkplaceLocationService = async ({ latitude, longitude }) => {
             return { status: 400, ok: false, message: "Vĩ độ (latitude) và kinh độ (longitude) là bắt buộc." };
         }
 
-        // Tìm một document và cập nhật, nếu không có thì tạo mới (upsert: true)
-        // Dùng filter rỗng {} vì ta biết chỉ có 1 document duy nhất
+        // === FIX 2: TỰ ĐỘNG XỬ LÝ DẤU PHẨY VÀ CHUỖI ===
+        const latNum = parseFloat(String(latitude).replace(',', '.'));
+        const lngNum = parseFloat(String(longitude).replace(',', '.'));
+
+        if (isNaN(latNum) || isNaN(lngNum)) {
+             return { status: 400, ok: false, message: "Định dạng vĩ độ hoặc kinh độ không hợp lệ." };
+        }
+        // === KẾT THÚC PHẦN FIX ===
+
         const updatedWorkplace = await Workplace.findOneAndUpdate(
             {},
-            { latitude, longitude },
+            { 
+                latitude: latNum,
+                longitude: lngNum
+            },
             {
-                new: true,      // Trả về document đã được cập nhật
-                upsert: true,   // Nếu không tìm thấy document nào, hãy tạo một cái mới
-                setDefaultsOnInsert: true // Sử dụng giá trị default trong schema khi tạo mới
+                new: true,
+                upsert: true,
+                setDefaultsOnInsert: true
             }
         );
 

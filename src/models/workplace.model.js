@@ -1,27 +1,19 @@
-const mongoose = require("mongoose");
+// src/models/workplace.model.js
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const workplaceSchema = new mongoose.Schema(
-    {
-        name: {
-            type: String,
-            default: "Trụ sở chính", // Tên địa điểm, ví dụ trụ sở, chi nhánh...
-        },
-        latitude: {
-            type: Number,
-            required: [true, "Vĩ độ (latitude) là bắt buộc."],
-        },
-        longitude: {
-            type: Number,
-            required: [true, "Kinh độ (longitude) là bắt buộc."],
-        },
+const workplaceSchema = new Schema({
+    latitude: {
+        type: Number,
+        required: true,
     },
-    {
-        timestamps: {
-            createdAt: 'created_at',
-            updatedAt: 'updated_at'
-        }
-    }
-);
+    longitude: {
+        type: Number,
+        required: true,
+    },
+}, {
+    timestamps: true, // Tự động thêm createdAt và updatedAt
+});
 
-// Chỉ có một địa điểm mặc định, nên không cần index phức tạp
-module.exports = mongoose.model("Workplace", workplaceSchema);
+const Workplace = mongoose.model('Workplace', workplaceSchema);
+module.exports = Workplace;
