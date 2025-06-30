@@ -72,7 +72,7 @@ const checkInService = async ({ userId, checkInData }) => {
   try {
     // Lấy dữ liệu ra
     let { latitude, longitude, reason } = checkInData;
-
+    console.log("checkInData:", checkInData);
     // === THÊM BƯỚC CHUYỂN ĐỔI VÀ KIỂM TRA ===
     // Dùng parseFloat để chuyển chuỗi thành số
     const numLatitude = parseFloat(latitude);
@@ -116,7 +116,9 @@ const checkInService = async ({ userId, checkInData }) => {
     let message = ATTENDANCE_MESSAGES.CHECK_IN_SUCCESS;
 
     if (distance > MAX_DISTANCE_METERS) {
+        console.log("User is outside the allowed distance for check-in.");
       if (!reason) {
+        console.log("No reason provided for remote check-in.");
         return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-in." };
       }
       newAttendanceData.is_remote = true;
