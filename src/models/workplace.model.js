@@ -3,6 +3,12 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const workplaceSchema = new Schema({
+    // << THÊM TRƯỜNG MỚI VÀO ĐÂY >>
+    name: {
+        type: String,
+        required: true,
+       
+    },
     latitude: {
         type: Number,
         required: true,
@@ -12,7 +18,7 @@ const workplaceSchema = new Schema({
         required: true,
     },
 }, {
-    timestamps: true, // Tự động thêm createdAt và updatedAt
+    timestamps: true,
 });
 
 const Workplace = mongoose.model('Workplace', workplaceSchema);

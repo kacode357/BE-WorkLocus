@@ -78,6 +78,9 @@ const getEmployeeDetailsByIdController = (req, res) => {
 const updateWorkplaceLocationController = (req, res) => {
     handleRequest(() => AdminService.updateWorkplaceLocationService(req.body), res);
 };
+const getWorkplaceLocationController = (req, res) => {
+    handleRequest(() => AdminService.getWorkplaceLocationService(), res);
+};
 module.exports = {
     getDashboardStatsController,
     searchUsersController,
@@ -91,5 +94,6 @@ module.exports = {
     searchWorkReportsController,
     updateEmployeeSalaryController,
     getEmployeeDetailsByIdController,
-    updateWorkplaceLocationController
+    updateWorkplaceLocationController,
+    getWorkplaceLocationController
 };

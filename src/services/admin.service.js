@@ -404,32 +404,28 @@ const getEmployeeDetailsByIdService = async ({ userIdToView }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
-const updateWorkplaceLocationService = async ({ latitude, longitude }) => {
+const updateWorkplaceLocationService = async ({ name, latitude, longitude }) => {
     try {
-        if (latitude === undefined || longitude === undefined) {
-            return { status: 400, ok: false, message: "Vĩ độ (latitude) và kinh độ (longitude) là bắt buộc." };
+        // Thêm kiểm tra cho 'name'
+        if (!name || latitude === undefined || longitude === undefined) {
+            return { status: 400, ok: false, message: "Tên, vĩ độ và kinh độ là bắt buộc." };
         }
 
-        // === FIX 2: TỰ ĐỘNG XỬ LÝ DẤU PHẨY VÀ CHUỖI ===
         const latNum = parseFloat(String(latitude).replace(',', '.'));
         const lngNum = parseFloat(String(longitude).replace(',', '.'));
 
         if (isNaN(latNum) || isNaN(lngNum)) {
              return { status: 400, ok: false, message: "Định dạng vĩ độ hoặc kinh độ không hợp lệ." };
         }
-        // === KẾT THÚC PHẦN FIX ===
-
+        
         const updatedWorkplace = await Workplace.findOneAndUpdate(
             {},
             { 
+                name, // << LƯU CẢ TÊN >>
                 latitude: latNum,
                 longitude: lngNum
             },
-            {
-                new: true,
-                upsert: true,
-                setDefaultsOnInsert: true
-            }
+            { new: true, upsert: true, setDefaultsOnInsert: true }
         );
 
         return {
@@ -440,6 +436,32 @@ const updateWorkplaceLocationService = async ({ latitude, longitude }) => {
         };
     } catch (error) {
         console.error("ERROR in updateWorkplaceLocationService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
+const getWorkplaceLocationService = async () => {
+    try {
+        // Vì chỉ có 1 địa điểm duy nhất, ta dùng findOne
+        const workplace = await Workplace.findOne({});
+
+        if (!workplace) {
+            // Trường hợp chưa có địa điểm nào được lưu
+            return {
+                status: 200, // Vẫn là 200 OK, nhưng data là null
+                ok: true,
+                message: "Chưa có địa điểm làm việc nào được thiết lập.",
+                data: null,
+            };
+        }
+
+        return {
+            status: 200,
+            ok: true,
+            message: "Lấy thông tin địa điểm làm việc thành công.",
+            data: workplace,
+        };
+    } catch (error) {
+        console.error("ERROR in getWorkplaceLocationService:", error);
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
@@ -456,5 +478,6 @@ module.exports = {
     searchWorkReportsService,
     updateEmployeeSalaryService,
     getEmployeeDetailsByIdService,
-    updateWorkplaceLocationService
+    updateWorkplaceLocationService, 
+    getWorkplaceLocationService
 };

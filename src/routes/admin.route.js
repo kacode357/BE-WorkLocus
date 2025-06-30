@@ -25,4 +25,5 @@ router.post("/work-reports/search", AdminController.searchWorkReportsController)
 // === Route mới cho dashboard stats ===
 router.get("/dashboard-stats", AdminController.getDashboardStatsController);
 router.put("/workplace", AdminController.updateWorkplaceLocationController);
+router.get("/workplace", AdminController.getWorkplaceLocationController);
 module.exports = router;
