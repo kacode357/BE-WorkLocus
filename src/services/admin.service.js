@@ -403,7 +403,35 @@ const getEmployeeDetailsByIdService = async ({ userIdToView }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const updateWorkplaceLocationService = async ({ latitude, longitude }) => {
+    try {
+        if (latitude === undefined || longitude === undefined) {
+            return { status: 400, ok: false, message: "Vĩ độ (latitude) và kinh độ (longitude) là bắt buộc." };
+        }
 
+        // Tìm một document và cập nhật, nếu không có thì tạo mới (upsert: true)
+        // Dùng filter rỗng {} vì ta biết chỉ có 1 document duy nhất
+        const updatedWorkplace = await Workplace.findOneAndUpdate(
+            {},
+            { latitude, longitude },
+            {
+                new: true,      // Trả về document đã được cập nhật
+                upsert: true,   // Nếu không tìm thấy document nào, hãy tạo một cái mới
+                setDefaultsOnInsert: true // Sử dụng giá trị default trong schema khi tạo mới
+            }
+        );
+
+        return {
+            status: 200,
+            ok: true,
+            message: "Cập nhật địa điểm làm việc thành công.",
+            data: updatedWorkplace,
+        };
+    } catch (error) {
+        console.error("ERROR in updateWorkplaceLocationService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
     getDashboardStatsService,
     searchUsersService,
@@ -416,5 +444,6 @@ module.exports = {
     searchAllAttendancesService,
     searchWorkReportsService,
     updateEmployeeSalaryService,
-    getEmployeeDetailsByIdService
+    getEmployeeDetailsByIdService,
+    updateWorkplaceLocationService
 };

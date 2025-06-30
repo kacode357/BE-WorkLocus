@@ -14,6 +14,7 @@ const performanceReviewRoutes = require("./performanceReview.route");
 const payrollRoutes = require("./payroll.route");
 const performanceBonusRoutes = require("./performanceBonus.route");
 
+
 router.use("", CheckApi);
 router.use("/api/auth", authRoutes);
 router.use("/api/users", userRoutes);
@@ -23,6 +24,8 @@ router.use("/api/work-reports", workReportRoutes);
 router.use("/api/reviews", performanceReviewRoutes);
 router.use("/api/payroll", payrollRoutes);
 router.use("/api/bonuses", performanceBonusRoutes);
+
+
 
 // Export cái router đã được cấu hình ra ngoài
 module.exports = router;

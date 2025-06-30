@@ -75,7 +75,9 @@ const getEmployeeDetailsByIdController = (req, res) => {
         userIdToView: req.params.id // Lấy id từ URL
     }), res);
 };
-
+const updateWorkplaceLocationController = (req, res) => {
+    handleRequest(() => AdminService.updateWorkplaceLocationService(req.body), res);
+};
 module.exports = {
     getDashboardStatsController,
     searchUsersController,
@@ -88,5 +90,6 @@ module.exports = {
     searchAllAttendancesController,
     searchWorkReportsController,
     updateEmployeeSalaryController,
-    getEmployeeDetailsByIdController
+    getEmployeeDetailsByIdController,
+    updateWorkplaceLocationController
 };
