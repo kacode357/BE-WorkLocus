@@ -12,16 +12,27 @@ const attendanceSchema = new mongoose.Schema(
         work_date: { type: Date, required: true },
         total_work_time: { type: String, default: null },
         
-        // <<< --- CÁC TRƯỜNG MỚI, ĐƠN GIẢN HƠN --- >>>
-        is_remote: { // Đánh dấu đây là một lần chấm công từ xa
+        // <<< --- BỎ CÁC TRƯỜNG CŨ --- >>>
+        // is_remote: { type: Boolean, default: false },       // Bỏ
+        // request_reason: { type: String, default: null }, // Bỏ
+        
+        // +++ THÊM CÁC TRƯỜNG MỚI CHI TIẾT +++
+        is_remote_check_in: { // Đánh dấu check-in từ xa
             type: Boolean,
             default: false
         },
-        request_reason: { // Lưu lý do chấm công từ xa để sau này xem lại
+        check_in_reason: { // Lý do check-in từ xa
             type: String,
             default: null
         },
-        // <<< --- ĐÃ BỎ CÁC TRƯỜNG status, rejection_reason, processed_by --- >>>
+        is_remote_check_out: { // Đánh dấu check-out từ xa
+            type: Boolean,
+            default: false
+        },
+        check_out_reason: { // Lý do check-out từ xa
+            type: String,
+            default: null
+        },
         
         is_deleted: { type: Boolean, default: false },
     },
@@ -32,4 +43,5 @@ const attendanceSchema = new mongoose.Schema(
 
 attendanceSchema.index({ user_id: 1, work_date: 1 }, { unique: true });
 
-module.exports = mongoose.model("Attendance", attendanceSchema);
+const Attendance = mongoose.model("Attendance", attendanceSchema);
+module.exports = Attendance;

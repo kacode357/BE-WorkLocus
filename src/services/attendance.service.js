@@ -70,22 +70,13 @@ const getAttendanceStatusService = async ({ userId }) => {
 
 const checkInService = async ({ userId, checkInData }) => {
   try {
-    // Lấy dữ liệu ra
     let { latitude, longitude, reason } = checkInData;
-    console.log("checkInData:", checkInData);
-    // === THÊM BƯỚC CHUYỂN ĐỔI VÀ KIỂM TRA ===
-    // Dùng parseFloat để chuyển chuỗi thành số
+
     const numLatitude = parseFloat(latitude);
     const numLongitude = parseFloat(longitude);
 
-    // Kiểm tra xem sau khi chuyển đổi có phải là số hợp lệ không
     if (isNaN(numLatitude) || isNaN(numLongitude)) {
       return { status: 400, ok: false, message: "Tọa độ latitude hoặc longitude không hợp lệ." };
-    }
-    // === KẾT THÚC PHẦN THÊM VÀO ===
-
-    if (latitude === undefined || longitude === undefined) {
-      return { status: 400, ok: false, message: "Không tìm thấy toạ độ của bạn để chấm công." };
     }
     
     const today = new Date();
@@ -100,7 +91,6 @@ const checkInService = async ({ userId, checkInData }) => {
       return { status: 400, ok: false, message: "Địa điểm làm việc chưa được thiết lập." };
     }
     
-    // Dùng biến đã được chuyển đổi để tính toán
     const distance = getDistanceInMeters(numLatitude, numLongitude, workplace.latitude, workplace.longitude);
     const MAX_DISTANCE_METERS = 50;
 
@@ -108,21 +98,22 @@ const checkInService = async ({ userId, checkInData }) => {
       user_id: userId,
       check_in_time: new Date(),
       work_date: today,
-      check_in_latitude: numLatitude, // Lưu dạng số
-      check_in_longitude: numLongitude, // Lưu dạng số
-      is_remote: false,
+      check_in_latitude: numLatitude,
+      check_in_longitude: numLongitude,
+      // Mặc định các trường mới
+      is_remote_check_in: false,
+      check_in_reason: null,
     };
     
     let message = ATTENDANCE_MESSAGES.CHECK_IN_SUCCESS;
 
     if (distance > MAX_DISTANCE_METERS) {
-        console.log("User is outside the allowed distance for check-in.");
       if (!reason) {
-        console.log("No reason provided for remote check-in.");
         return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-in." };
       }
-      newAttendanceData.is_remote = true;
-      newAttendanceData.request_reason = reason;
+      // Ghi vào các trường mới cho check-in
+      newAttendanceData.is_remote_check_in = true;
+      newAttendanceData.check_in_reason = reason;
       message = "Check-in từ xa thành công. Lý do của bạn đã được ghi nhận.";
     }
     
@@ -157,22 +148,31 @@ const checkOutService = async ({ userId, checkOutData }) => {
             return { status: 409, ok: false, message: ATTENDANCE_MESSAGES.ALREADY_CHECKED_OUT };
         }
 
-        // Tương tự check-in, ta có thể kiểm tra vị trí khi check-out
-        const { latitude, longitude, reason } = checkOutData;
-        if (latitude !== undefined && longitude !== undefined) {
-             const workplace = await Workplace.findOne();
-             if (workplace) {
-                const distance = getDistanceInMeters(latitude, longitude, workplace.latitude, workplace.longitude);
-                if (distance > 50 && !reason) {
-                     return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-out." };
+        let { latitude, longitude, reason } = checkOutData;
+        const numLatitude = parseFloat(latitude);
+        const numLongitude = parseFloat(longitude);
+        
+        if (isNaN(numLatitude) || isNaN(numLongitude)) {
+            return { status: 400, ok: false, message: "Tọa độ latitude hoặc longitude không hợp lệ." };
+        }
+
+        const workplace = await Workplace.findOne();
+        if (workplace) {
+            const distance = getDistanceInMeters(numLatitude, numLongitude, workplace.latitude, workplace.longitude);
+            if (distance > 50) {
+                if (!reason) {
+                    return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-out." };
                 }
-             }
+                // Nếu có lý do, cập nhật các trường mới của check-out
+                attendanceRecord.is_remote_check_out = true;
+                attendanceRecord.check_out_reason = reason;
+            }
         }
 
         const checkOutTime = new Date();
         attendanceRecord.check_out_time = checkOutTime;
-        attendanceRecord.check_out_latitude = latitude;
-        attendanceRecord.check_out_longitude = longitude;
+        attendanceRecord.check_out_latitude = numLatitude;
+        attendanceRecord.check_out_longitude = numLongitude;
 
         const durationMs = checkOutTime - attendanceRecord.check_in_time;
         const totalMinutes = Math.floor(durationMs / (1000 * 60));
