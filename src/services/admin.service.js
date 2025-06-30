@@ -204,15 +204,30 @@ const searchWorkReportsService = async ({ searchCondition, pageInfo }) => {
         const limit = parseInt(pageSize) || 10;
         const skip = (page - 1) * limit;
 
+        // Bắt đầu xây dựng điều kiện query
         const queryConditions = {};
 
-        if (date_from && date_to) {
-            queryConditions.created_at = { $gte: new Date(date_from), $lte: new Date(date_to) };
+        // === PHẦN SỬA LỖI NẰM Ở ĐÂY ===
+        if (date_from || date_to) {
+            queryConditions.created_at = {};
+            if (date_from) {
+                // $gte: Lấy từ đầu ngày date_from
+                queryConditions.created_at.$gte = new Date(date_from);
+            }
+            if (date_to) {
+                // $lte: Lấy đến cuối ngày date_to (23:59:59.999)
+                const endDate = new Date(date_to);
+                endDate.setUTCHours(23, 59, 59, 999); // Đặt thời gian đến cuối ngày
+                queryConditions.created_at.$lte = endDate;
+            }
         }
+        // === KẾT THÚC PHẦN SỬA ===
+        
         if (user_id) {
             queryConditions.user_id = user_id;
         }
         if (keyword) {
+            // Giả sử mày muốn tìm keyword trong description
             queryConditions.description = { $regex: keyword, $options: 'i' };
         }
 
