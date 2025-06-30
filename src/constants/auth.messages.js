@@ -16,7 +16,7 @@ const AUTH_MESSAGES = {
     // Đăng nhập
     LOGIN_INFO_MISSING: "Vui lòng nhập email và mật khẩu.",
     LOGIN_INCORRECT: "Email hoặc mật khẩu không chính xác.",
-    LOGIN_NOT_ACTIVATED: "Tài khoản của bạn chưa được kích hoạt hoặc bị khóa.",
+    LOGIN_NOT_ACTIVATED: "Tài khoản của bạn chưa được kích hoạt hoặc bị khóa. Vui lòng kiểm tra email.",
     LOGIN_SUCCESS: "Đăng nhập thành công!",
 
     // Refresh Token
