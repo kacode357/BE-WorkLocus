@@ -121,19 +121,17 @@ const searchProjectsForEmployeeService = async ({ user, searchCondition, pageInf
         const limit = parseInt(pageSize) || 10;
         const skip = (page - 1) * limit;
 
-        // Xây dựng điều kiện query cơ bản (quyền xem)
         const queryConditions = {
             is_deleted: { $ne: true },
             $or: [
                 { type: 'public' },
-                { members: user._id }
+                { members: user._id },
+                { manager_id: user._id } // Thêm cả trường hợp user là manager
             ]
         };
 
-        // Nếu có keyword, thêm điều kiện tìm kiếm vào query
         if (keyword) {
             const keywordRegex = { $regex: keyword, $options: 'i' };
-            // Dùng $and để kết hợp điều kiện quyền xem VÀ điều kiện keyword
             queryConditions.$and = [
                 {
                     $or: [
@@ -150,14 +148,25 @@ const searchProjectsForEmployeeService = async ({ user, searchCondition, pageInf
             .select('-__v -is_deleted')
             .sort({ created_at: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean(); // TAO THÊM .lean() để trả về plain object, dễ chỉnh sửa
+
+        // TAO THÊM LOGIC ĐÁNH DẤU "is_member"
+        const projectsWithMembership = projects.map(project => {
+            const isManager = project.manager_id._id.equals(user._id);
+            const isMember = project.members.some(memberId => memberId.equals(user._id));
+            return {
+                ...project,
+                is_member: isManager || isMember, // true nếu là manager hoặc member
+            };
+        });
 
         return {
             status: 200,
             ok: true,
             message: PROJECT_MESSAGES.GET_PROJECTS_SUCCESS,
             data: {
-                records: projects,
+                records: projectsWithMembership, // Trả về danh sách đã được thêm cờ is_member
                 pagination: {
                     currentPage: page,
                     totalPages: Math.ceil(totalRecords / limit),
@@ -167,6 +176,43 @@ const searchProjectsForEmployeeService = async ({ user, searchCondition, pageInf
         };
     } catch (error) {
         console.error("ERROR in searchProjectsForEmployeeService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
+const leaveProjectService = async ({ projectId, user }) => {
+    try {
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return { status: 404, ok: false, message: PROJECT_MESSAGES.PROJECT_NOT_FOUND };
+        }
+
+        // Check 1: Manager không thể tự rời dự án.
+        if (project.manager_id.equals(user._id)) {
+            return { status: 403, ok: false, message: "Quản lý không thể rời dự án của mình. Hãy chuyển quyền hoặc xóa dự án." };
+        }
+
+        // Check 2: User có phải là thành viên không?
+        const isMember = project.members.includes(user._id);
+        if (!isMember) {
+            return { status: 404, ok: false, message: "Bạn không phải là thành viên của dự án này." };
+        }
+
+        // Hành động 1: Xóa user khỏi mảng members của project
+        await Project.updateOne(
+            { _id: projectId },
+            { $pull: { members: user._id } }
+        );
+
+        // Hành động 2: Gỡ assignment của user khỏi tất cả các task trong project
+        await Task.updateMany(
+            { project_id: projectId, assignee_id: user._id },
+            { $set: { assignee_id: null, status: 'todo' } }
+        );
+
+        return { status: 200, ok: true, message: "Rời khỏi dự án thành công." };
+
+    } catch (error) {
+        console.error("ERROR in leaveProjectService:", error);
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
@@ -265,5 +311,6 @@ module.exports = {
     joinProjectService,
     searchProjectsForEmployeeService,
     createProjectService,
-    completeProjectService
+    completeProjectService,
+    leaveProjectService,
 };

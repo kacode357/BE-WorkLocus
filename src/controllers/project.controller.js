@@ -61,7 +61,14 @@ const removeMemberFromProjectController = (req, res) => {
         userIdToRemove: req.params.userId,   
     }), res);
 };
+const leaveProjectController = (req, res) => {
+    handleRequest(() => ProjectService.leaveProjectService({
+        projectId: req.params.id, // Lấy ID dự án từ URL
+        user: req.user,          // Lấy user từ token
+    }), res);
+};
 module.exports = {
+    leaveProjectController,
     removeMemberFromProjectController,
     updateProjectController,
     softDeleteProjectController,

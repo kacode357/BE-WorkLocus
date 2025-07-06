@@ -43,4 +43,9 @@ router.patch(
     [verifyToken, checkProjectManagerOrAdmin],
     ProjectController.completeProjectController
 );
+router.patch(
+    "/:id/leave",
+    verifyToken, // Cần token để biết user nào đang muốn rời
+    ProjectController.leaveProjectController
+);
 module.exports = router;
