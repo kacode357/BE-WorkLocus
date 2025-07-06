@@ -5,6 +5,7 @@ const Payroll = require("../models/payroll.model.js");
 const Workplace = require("../models/workplace.model");
 const Project = require("../models/project.model");
 const Task = require("../models/task.model");
+const Setting = require("../models/setting.model");
 const bcrypt = require("bcrypt");
 const sendEmail = require("../utils/sendEmail");
 const { ADMIN_MESSAGES } = require("../constants/admin.messages");
@@ -815,7 +816,36 @@ const searchProjectMembersService = async ({ projectId, searchCondition, pageInf
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const getSystemSettingsService = async () => {
+    try {
+        // Tìm và lấy ra cài đặt hiện tại từ model Setting
+        // Nếu không có, nó sẽ trả về null hoặc một object rỗng tùy cấu hình model của mày.
+        const settings = await Setting.findOne({});
+
+        if (!settings) {
+            // Nếu chưa có cài đặt nào, trả về một trạng thái mặc định hoặc báo lỗi tùy ý.
+            // Ví dụ: trả về một object với các giá trị mặc định.
+            return {
+                status: 200,
+                ok: true,
+                message: "Chưa có cài đặt hệ thống nào được thiết lập. Trả về giá trị mặc định.",
+                data: {
+                    is_maintenance_mode: false,
+                    maintenance_message: "",
+                    min_app_version: "1.0.0" // Một giá trị mặc định
+                }
+            };
+        }
+
+        return { status: 200, ok: true, message: "Lấy cài đặt hệ thống thành công.", data: settings };
+
+    } catch (error) {
+        console.error("ERROR in getSystemSettingsService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
+    getSystemSettingsService,
     getDashboardStatsService,
     searchProjectMembersService,
     updateMaintenanceModeService,

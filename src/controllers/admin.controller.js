@@ -116,7 +116,11 @@ const searchProjectMembersController = (req, res) => {
         pageInfo
     }), res);
 };
+const getSystemSettingsController = (req, res) => {
+    handleRequest(() => AdminService.getSystemSettingsService(), res);
+};
 module.exports = {
+    getSystemSettingsController,
     searchProjectMembersController,
     addMemberToProjectController,
     updateMaintenanceModeController,

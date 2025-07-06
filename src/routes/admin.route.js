@@ -4,6 +4,7 @@ const router = express.Router();
 const AdminController = require("../controllers/admin.controller.js");
 const { verifyToken, checkAdmin } = require("../middleware/auth.js");
 
+router.get("/settings", AdminController.getSystemSettingsController);
 // Áp dụng middleware cho TẤT CẢ các route trong file này
 router.use(verifyToken, checkAdmin);
 

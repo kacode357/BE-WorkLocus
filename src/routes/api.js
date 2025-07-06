@@ -21,7 +21,7 @@ router.use("/api/auth", authRoutes);
 router.use("/api/users", userRoutes);
 router.use("/api/admin", adminRoutes);
 router.use("/api/attendances", attendanceRoutes);
-// router.use("/api/work-reports", workReportRoutes);
+
 router.use("/api/reviews", performanceReviewRoutes);
 router.use("/api/payroll", payrollRoutes);
 router.use("/api/bonuses", performanceBonusRoutes);
