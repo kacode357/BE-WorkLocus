@@ -23,18 +23,18 @@ const getAttendanceStatusController = (req, res) => {
 
 const checkInController = (req, res) => {
     const userId = req.user._id;
-    const { latitude, longitude, reason } = req.body;
+    const { latitude, longitude, reason, shift } = req.body;
     handleRequest(
-        () => AttendanceService.checkInService({ userId, checkInData: { latitude, longitude, reason } }),
+        () => AttendanceService.checkInService({ userId, checkInData: { latitude, longitude, reason, shift } }),
         res
     );
 };
 
 const checkOutController = (req, res) => {
     const userId = req.user._id;
-    const { latitude, longitude, reason } = req.body;
+    const { latitude, longitude, reason, shift } = req.body;
     handleRequest(
-        () => AttendanceService.checkOutService({ userId, checkOutData: { latitude, longitude, reason } }),
+        () => AttendanceService.checkOutService({ userId, checkOutData: { latitude, longitude, reason, shift } }),
         res
     );
 };
