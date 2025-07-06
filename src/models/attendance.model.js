@@ -1,3 +1,4 @@
+// File: src/models/attendance.model.js
 const mongoose = require("mongoose");
 
 const attendanceSchema = new mongoose.Schema(
@@ -12,28 +13,29 @@ const attendanceSchema = new mongoose.Schema(
         work_date: { type: Date, required: true },
         total_work_time: { type: String, default: null },
         
-        // <<< --- BỎ CÁC TRƯỜNG CŨ --- >>>
-        // is_remote: { type: Boolean, default: false },       // Bỏ
-        // request_reason: { type: String, default: null }, // Bỏ
+        // << TRƯỜNG MỚI ĐỂ THAY THẾ WORK REPORT >>
+        // Mảng này sẽ chứa ID của tất cả các task mà user đã làm trong ngày chấm công này
+        tasks_worked_on: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Task"
+        }],
         
-        // +++ THÊM CÁC TRƯỜNG MỚI CHI TIẾT +++
-        is_remote_check_in: { // Đánh dấu check-in từ xa
+        is_remote_check_in: {
             type: Boolean,
             default: false
         },
-        check_in_reason: { // Lý do check-in từ xa
+        check_in_reason: {
             type: String,
             default: null
         },
-        is_remote_check_out: { // Đánh dấu check-out từ xa
+        is_remote_check_out: {
             type: Boolean,
             default: false
         },
-        check_out_reason: { // Lý do check-out từ xa
+        check_out_reason: {
             type: String,
             default: null
         },
-        
         is_deleted: { type: Boolean, default: false },
     },
     {

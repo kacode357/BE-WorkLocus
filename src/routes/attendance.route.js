@@ -15,4 +15,7 @@ router.post("/check-out", verifyToken, AttendanceController.checkOutController);
 // API để nhân viên tự xem lịch sử điểm danh của mình
 router.post("/history", verifyToken, AttendanceController.getMyAttendanceHistoryController);
 
+// API mới để ghi nhận một task đã làm trong ngày
+router.post("/log-task", verifyToken, AttendanceController.logTaskController);
+
 module.exports = router;

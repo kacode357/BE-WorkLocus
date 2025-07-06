@@ -1,8 +1,10 @@
 const Attendance = require("../models/attendance.model");
 const Workplace = require("../models/workplace.model");
+const Task = require("../models/task.model");
 const { ATTENDANCE_MESSAGES } = require("../constants/attendance.messages");
 const { GENERAL_MESSAGES } = require("../constants/auth.messages");
 const { getDistanceInMeters } = require("../utils/location");
+const c = require("config");
 // HÀM MỚI: Kiểm tra trạng thái chấm công trong ngày
 const getAttendanceStatusService = async ({ userId }) => {
     try {
@@ -232,9 +234,48 @@ const getMyAttendanceHistoryService = async ({ userId, searchCondition, pageInfo
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const logTaskToAttendanceService = async ({ userId, taskId }) => {
+    try {
+        // Bước 1: Tìm ca chấm công HIỆN TẠI (chưa check-out) của user trong ngày hôm nay
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
+        const todaysAttendance = await Attendance.findOne({
+            user_id: userId,
+            work_date: today,
+            check_out_time: null // Quan trọng: chỉ tìm ca đang mở
+        });
+
+        if (!todaysAttendance) {
+            return { status: 400, ok: false, message: "Bạn phải check-in trước khi ghi nhận công việc." };
+        }
+
+        // Bước 2: Kiểm tra xem task có tồn tại và có được gán cho user này không
+        const task = await Task.findById(taskId);
+        if (!task) {
+            return { status: 404, ok: false, message: "Không tìm thấy công việc này." };
+        }
+
+        if (!task.assignee_id || !task.assignee_id.equals(userId)) {
+            return { status: 403, ok: false, message: "Bạn không được giao công việc này để thực hiện." };
+        }
+
+        // Bước 3: Thêm taskId vào mảng tasks_worked_on (dùng $addToSet để không bị trùng lặp)
+        await Attendance.updateOne(
+            { _id: todaysAttendance._id },
+            { $addToSet: { tasks_worked_on: taskId } }
+        );
+
+        return { status: 200, ok: true, message: "Ghi nhận công việc thành công." };
+
+    } catch (error) {
+        console.error("ERROR in logTaskToAttendanceService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
-    getAttendanceStatusService, // Thêm hàm mới vào export
+    logTaskToAttendanceService, 
+    getAttendanceStatusService, 
     checkInService,
     checkOutService,
     getMyAttendanceHistoryService,

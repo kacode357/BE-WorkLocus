@@ -55,9 +55,6 @@ const searchAllAttendancesController = (req, res) => {
     handleRequest(() => AdminService.searchAllAttendancesService(req.body), res);
 };
 
-const searchWorkReportsController = (req, res) => {
-    handleRequest(() => AdminService.searchWorkReportsService(req.body), res);
-};
 const searchUsersController = (req, res) => {
     handleRequest(() => AdminService.searchUsersService(req.body), res);
 };
@@ -81,7 +78,50 @@ const updateWorkplaceLocationController = (req, res) => {
 const getWorkplaceLocationController = (req, res) => {
     handleRequest(() => AdminService.getWorkplaceLocationService(), res);
 };
+const createPMByAdminController = (req, res) => {
+    handleRequest(() => AdminService.createPMByAdminService(req.body), res);
+};
+
+const createTLByAdminController = (req, res) => {
+    handleRequest(() => AdminService.createTLByAdminService(req.body), res);
+};
+const searchAllProjectsController = (req, res) => {
+    const { searchCondition = {}, pageInfo = {} } = req.body;
+    handleRequest(() => AdminService.searchAllProjectsService({
+        searchCondition,
+        pageInfo
+    }), res);
+};
+const searchAllTasksController = (req, res) => {
+    const { searchCondition = {}, pageInfo = {} } = req.body;
+    handleRequest(() => AdminService.searchAllTasksService({
+        searchCondition,
+        pageInfo
+    }), res);
+};
+const updateMaintenanceModeController = (req, res) => {
+    handleRequest(() => AdminService.updateMaintenanceModeService(req.body), res);
+};
+const addMemberToProjectController = (req, res) => {
+    const { projectId } = req.params; 
+    const { userId } = req.body; 
+    handleRequest(() => AdminService.addMemberToProjectService({ projectId, userId }), res);
+};
+const searchProjectMembersController = (req, res) => {
+    const { projectId } = req.params; // Lấy projectId từ URL params
+    const { searchCondition = {}, pageInfo = {} } = req.body; // Lấy điều kiện tìm kiếm và phân trang từ body
+    handleRequest(() => AdminService.searchProjectMembersService({
+        projectId,
+        searchCondition,
+        pageInfo
+    }), res);
+};
 module.exports = {
+    searchProjectMembersController,
+    addMemberToProjectController,
+    updateMaintenanceModeController,
+    searchAllTasksController,
+    searchAllProjectsController,
     getDashboardStatsController,
     searchUsersController,
     blockUserController,
@@ -90,8 +130,10 @@ module.exports = {
     adminChangePasswordController,
     createAdminAccountController,
     createEmployeeByAdminController,
+    createPMByAdminController,
+    createTLByAdminController,
     searchAllAttendancesController,
-    searchWorkReportsController,
+
     updateEmployeeSalaryController,
     getEmployeeDetailsByIdController,
     updateWorkplaceLocationController,

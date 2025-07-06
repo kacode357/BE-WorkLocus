@@ -44,9 +44,14 @@ const getMyAttendanceHistoryController = (req, res) => {
     const { searchCondition = {}, pageInfo = {} } = req.body;
     handleRequest(() => AttendanceService.getMyAttendanceHistoryService({ userId, searchCondition, pageInfo }), res);
 };
-
+const logTaskController = (req, res) => {
+    const userId = req.user._id;
+    const { taskId } = req.body;
+    handleRequest(() => AttendanceService.logTaskToAttendanceService({ userId, taskId }), res);
+};
 module.exports = {
-    getAttendanceStatusController, // Thêm controller mới vào export
+    logTaskController,
+    getAttendanceStatusController,
     checkInController,
     checkOutController,
     getMyAttendanceHistoryController,

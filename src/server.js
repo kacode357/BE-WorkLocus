@@ -5,6 +5,7 @@ const express = require("express");
 const cors = require("cors");
 const connectDb = require("./config/database");
 const apiRoutes = require("./routes/api");
+const checkMaintenanceMode = require('../src/middleware/maintenance');
 
 const app = express();
 
@@ -27,6 +28,8 @@ app.use(async (req, res, next) => {
   }
 });
 
+// --- MIDDLEWARE KIỂM TRA CHẾ ĐỘ BẢO TRÌ ---
+app.use(checkMaintenanceMode);
 
 // --- SỬ DỤNG ROUTER CHÍNH ---
 app.use("/", apiRoutes);
