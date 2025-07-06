@@ -521,59 +521,99 @@ const getEmployeeDetailsByIdService = async ({ userIdToView }) => {
     }
 };
 
-const updateWorkplaceLocationService = async ({ name, latitude, longitude }) => {
+const createWorkplaceService = async ({ name, latitude, longitude }) => {
     try {
         if (!name || latitude === undefined || longitude === undefined) {
-            return { status: 400, ok: false, message: ADMIN_MESSAGES.WORKPLACE_INFO_REQUIRED };
+            return { status: 400, ok: false, message: "Tên, vĩ độ và kinh độ là bắt buộc." };
         }
-        const latNum = parseFloat(String(latitude).replace(',', '.'));
-        const lngNum = parseFloat(String(longitude).replace(',', '.'));
-        if (isNaN(latNum) || isNaN(lngNum)) {
-            return { status: 400, ok: false, message: ADMIN_MESSAGES.WORKPLACE_INVALID_COORDINATES };
+        
+        const existingWorkplace = await Workplace.findOne({ name });
+        if (existingWorkplace) {
+            // Nếu địa điểm tồn tại và đang bị xóa mềm -> khôi phục lại
+            if (existingWorkplace.is_deleted) {
+                existingWorkplace.is_deleted = false;
+                existingWorkplace.latitude = latitude;
+                existingWorkplace.longitude = longitude;
+                await existingWorkplace.save();
+                return { status: 200, ok: true, message: "Khôi phục và cập nhật địa điểm thành công.", data: existingWorkplace };
+            }
+            // Nếu không thì báo lỗi trùng lặp
+            return { status: 409, ok: false, message: "Tên địa điểm này đã tồn tại." };
         }
-        const updatedWorkplace = await Workplace.findOneAndUpdate(
-            {},
-            {
-                name,
-                latitude: latNum,
-                longitude: lngNum
-            },
-            { new: true, upsert: true, setDefaultsOnInsert: true }
-        );
-        return {
-            status: 200,
-            ok: true,
-            message: ADMIN_MESSAGES.UPDATE_WORKPLACE_SUCCESS,
-            data: updatedWorkplace,
-        };
+
+        const newWorkplace = await Workplace.create({ name, latitude, longitude });
+        return { status: 201, ok: true, message: "Tạo địa điểm mới thành công.", data: newWorkplace };
+
     } catch (error) {
-        console.error("ERROR in updateWorkplaceLocationService:", error);
+        console.error("ERROR in createWorkplaceService:", error);
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
 
-const getWorkplaceLocationService = async () => {
+// Sửa lại hàm SEARCH: Chỉ lấy những địa điểm chưa bị xóa
+const searchWorkplacesService = async ({ pageInfo }) => {
     try {
-        const workplace = await Workplace.findOne({});
-        if (!workplace) {
-            return {
-                status: 200,
-                ok: true,
-                message: ADMIN_MESSAGES.WORKPLACE_NOT_SET,
-                data: null,
-            };
-        }
+        const { pageNum, pageSize } = pageInfo || {};
+        const page = parseInt(pageNum) || 1;
+        const limit = parseInt(pageSize) || 10;
+        const skip = (page - 1) * limit;
+
+        const queryConditions = { is_deleted: { $ne: true } }; // << THÊM ĐIỀU KIỆN LỌC
+
+        const totalRecords = await Workplace.countDocuments(queryConditions);
+        const records = await Workplace.find(queryConditions).sort({ createdAt: -1 }).skip(skip).limit(limit);
+
         return {
-            status: 200,
-            ok: true,
-            message: ADMIN_MESSAGES.GET_WORKPLACE_SUCCESS,
-            data: workplace,
+            status: 200, ok: true, message: "Lấy danh sách địa điểm thành công.",
+            data: { records, pagination: { currentPage: page, totalPages: Math.ceil(totalRecords / limit), totalRecords } }
         };
     } catch (error) {
-        console.error("ERROR in getWorkplaceLocationService:", error);
+        console.error("ERROR in searchWorkplacesService:", error);
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+
+// Sửa lại hàm UPDATE: Chỉ cho sửa địa điểm chưa bị xóa
+const updateWorkplaceByIdService = async ({ workplaceId, updateData }) => {
+    try {
+        delete updateData._id;
+
+        const updatedWorkplace = await Workplace.findOneAndUpdate(
+            { _id: workplaceId, is_deleted: { $ne: true } }, // << THÊM ĐIỀU KIỆN LỌC
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedWorkplace) {
+            return { status: 404, ok: false, message: "Không tìm thấy địa điểm để cập nhật." };
+        }
+        return { status: 200, ok: true, message: "Cập nhật địa điểm thành công.", data: updatedWorkplace };
+    } catch (error) {
+        console.error("ERROR in updateWorkplaceByIdService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
+
+// Sửa lại hàm DELETE: Chuyển sang xóa mềm
+const deleteWorkplaceService = async ({ workplaceId }) => {
+    try {
+        const deletedWorkplace = await Workplace.findOneAndUpdate(
+            { _id: workplaceId, is_deleted: { $ne: true } }, // Tìm cái chưa bị xóa
+            { $set: { is_deleted: true } }, // Đánh dấu là đã xóa
+            { new: true }
+        );
+
+        if (!deletedWorkplace) {
+            return { status: 404, ok: false, message: "Không tìm thấy địa điểm để xóa." };
+        }
+        return { status: 200, ok: true, message: "Xóa địa điểm thành công." };
+    } catch (error) {
+        console.error("ERROR in deleteWorkplaceService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
+// File: src/services/admin.service.js
+
 const searchAllProjectsService = async ({ searchCondition, pageInfo }) => {
     try {
         const { keyword, type, status, is_deleted } = searchCondition || {};
@@ -610,14 +650,30 @@ const searchAllProjectsService = async ({ searchCondition, pageInfo }) => {
             { $sort: { created_at: -1 } },
             { $skip: skip },
             { $limit: limit },
+
+            // << GIAI ĐOẠN 2 ĐƯỢC NÂNG CẤP >>
+            // Join với collection 'tasks' NHƯNG CHỈ LẤY TASK ACTIVE
             {
                 $lookup: {
                     from: 'tasks',
-                    localField: '_id',
-                    foreignField: 'project_id',
-                    as: 'tasks_info'
+                    let: { projectId: '$_id' }, // Tạo biến projectId từ _id của project hiện tại
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    // Điều kiện 1: task.project_id phải bằng projectId của project
+                                    $eq: ['$project_id', '$$projectId']
+                                },
+                                // Điều kiện 2: task phải active
+                                is_deleted: false
+                            }
+                        }
+                    ],
+                    as: 'active_tasks_info' // Tên mảng mới chỉ chứa task active
                 }
             },
+            
+            // Join với User để lấy tên manager
             {
                 $lookup: {
                     from: 'users',
@@ -626,6 +682,7 @@ const searchAllProjectsService = async ({ searchCondition, pageInfo }) => {
                     as: 'manager_info'
                 }
             },
+            // Join với User để lấy thông tin members
             {
                 $lookup: {
                     from: 'users',
@@ -634,13 +691,11 @@ const searchAllProjectsService = async ({ searchCondition, pageInfo }) => {
                     as: 'members_info'
                 }
             },
-            // << GIAI ĐOẠN SỬA LỖI BẮT ĐẦU TỪ ĐÂY >>
+            // Giai đoạn 3: Thêm trường task_count dựa trên mảng active_tasks_info
             {
                 $addFields: {
-                    task_count: { $size: '$tasks_info' },
-                    // Chuyển manager_info từ mảng 1 phần tử thành object
+                    task_count: { $size: '$active_tasks_info' }, // << Đếm mảng task đã lọc
                     manager: { $arrayElemAt: ['$manager_info', 0] },
-                    // Tạo trường 'members' mới chỉ chứa các thông tin cần thiết
                     members: {
                         $map: {
                             input: '$members_info',
@@ -655,17 +710,15 @@ const searchAllProjectsService = async ({ searchCondition, pageInfo }) => {
                     }
                 }
             },
-            // Giai đoạn cuối: Dọn dẹp, chỉ dùng exclusion
+            // Giai đoạn cuối: Dọn dẹp
             {
                 $project: {
-                    tasks_info: 0,
+                    active_tasks_info: 0, // << Bỏ trường tạm mới
                     manager_info: 0,
                     members_info: 0,
                     __v: 0,
                     'manager.password': 0,
                     'manager.refresh_token': 0,
-                    'manager.is_activated': 0,
-                    'manager.is_deleted': 0,
                 }
             }
         ];
@@ -680,7 +733,6 @@ const searchAllProjectsService = async ({ searchCondition, pageInfo }) => {
         return {
             status: 200, ok: true, message: ADMIN_MESSAGES.SEARCH_SUCCESS,
             data: {
-                // Không cần map lại ở đây nữa vì đã xử lý trong aggregation
                 records: projects,
                 pagination: {
                     currentPage: page,
@@ -873,6 +925,8 @@ module.exports = {
    
     updateEmployeeSalaryService,
     getEmployeeDetailsByIdService,
-    updateWorkplaceLocationService,
-    getWorkplaceLocationService
+    createWorkplaceService,
+    searchWorkplacesService,
+    updateWorkplaceByIdService,
+    deleteWorkplaceService,
 };

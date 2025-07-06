@@ -86,7 +86,7 @@ const getAttendanceStatusService = async ({ userId }) => {
 
 const checkInService = async ({ userId, checkInData }) => {
     try {
-        let { latitude, longitude, reason, shift } = checkInData;
+        let { latitude, longitude, reason, shift, workplaceId } = checkInData; // THÊM workplaceId vào đây
         if (!['morning', 'afternoon'].includes(shift)) {
             return { status: 400, ok: false, message: "Ca làm việc không hợp lệ. Phải là 'morning' hoặc 'afternoon'." };
         }
@@ -96,6 +96,17 @@ const checkInService = async ({ userId, checkInData }) => {
 
         if (isNaN(numLatitude) || isNaN(numLongitude)) {
             return { status: 400, ok: false, message: "Tọa độ latitude hoặc longitude không hợp lệ." };
+        }
+        
+        // Kiểm tra workplaceId
+        if (!workplaceId) {
+            return { status: 400, ok: false, message: "Vui lòng cung cấp ID địa điểm làm việc." };
+        }
+
+        const workplace = await Workplace.findById(workplaceId); // TÌM WORKPLACE THEO ID
+        // Thêm kiểm tra soft delete
+        if (!workplace || workplace.is_deleted) { // Kiểm tra cả is_deleted
+            return { status: 404, ok: false, message: "Địa điểm làm việc không tồn tại hoặc đã bị xóa." };
         }
 
         const startOfDay = new Date();
@@ -121,11 +132,6 @@ const checkInService = async ({ userId, checkInData }) => {
             return { status: 409, ok: false, message: `Bạn đã check-in ca ${shift} hôm nay.` };
         }
 
-        const workplace = await Workplace.findOne();
-        if (!workplace) {
-            return { status: 400, ok: false, message: "Địa điểm làm việc chưa được thiết lập." };
-        }
-
         const distance = getDistanceInMeters(numLatitude, numLongitude, workplace.latitude, workplace.longitude);
         const MAX_DISTANCE_METERS = 50;
 
@@ -135,6 +141,7 @@ const checkInService = async ({ userId, checkInData }) => {
             [`${shift}.check_in_longitude`]: numLongitude,
             [`${shift}.is_remote_check_in`]: false,
             [`${shift}.check_in_reason`]: null,
+            [`${shift}.workplace_id`]: workplaceId, // LƯU LẠI WORKPLACE ID ĐÃ CHECKIN
         };
 
         let message = ATTENDANCE_MESSAGES.CHECK_IN_SUCCESS;
@@ -154,11 +161,11 @@ const checkInService = async ({ userId, checkInData }) => {
         );
 
         const updatedRecord = await Attendance.findById(attendanceRecord._id);
-        return { 
-            status: 201, 
-            ok: true, 
-            message, 
-            data: updatedRecord 
+        return {
+            status: 201,
+            ok: true,
+            message,
+            data: updatedRecord
         };
     } catch (error) {
         console.error("ERROR in checkInService:", error);
@@ -173,7 +180,7 @@ const checkOutService = async ({ userId, checkOutData }) => {
         const endOfDay = new Date();
         endOfDay.setHours(23, 59, 59, 999);
 
-        let { latitude, longitude, reason, shift } = checkOutData;
+        let { latitude, longitude, reason, shift, workplaceId } = checkOutData; // THÊM workplaceId vào đây
 
         if (!['morning', 'afternoon'].includes(shift)) {
             return { status: 400, ok: false, message: "Ca làm việc không hợp lệ. Phải là 'morning' hoặc 'afternoon'." };
@@ -203,7 +210,17 @@ const checkOutService = async ({ userId, checkOutData }) => {
             return { status: 400, ok: false, message: "Tọa độ latitude hoặc longitude không hợp lệ." };
         }
 
-        const workplace = await Workplace.findOne();
+        // Kiểm tra workplaceId
+        if (!workplaceId) {
+            return { status: 400, ok: false, message: "Vui lòng cung cấp ID địa điểm làm việc." };
+        }
+
+        const workplace = await Workplace.findById(workplaceId); // TÌM WORKPLACE THEO ID
+        // Thêm kiểm tra soft delete
+        if (!workplace || workplace.is_deleted) { // Kiểm tra cả is_deleted
+            return { status: 404, ok: false, message: "Địa điểm làm việc không tồn tại hoặc đã bị xóa." };
+        }
+        
         let updateData = {
             [`${shift}.check_out_time`]: new Date(),
             [`${shift}.check_out_latitude`]: numLatitude,
@@ -212,15 +229,16 @@ const checkOutService = async ({ userId, checkOutData }) => {
             [`${shift}.check_out_reason`]: null,
         };
 
-        if (workplace) {
-            const distance = getDistanceInMeters(numLatitude, numLongitude, workplace.latitude, workplace.longitude);
-            if (distance > 50) {
-                if (!reason) {
-                    return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-out." };
-                }
-                updateData[`${shift}.is_remote_check_out`] = true;
-                updateData[`${shift}.check_out_reason`] = reason;
+        const MAX_DISTANCE_METERS = 50; // Khai báo lại để dễ nhìn
+
+        // Logic kiểm tra khoảng cách vẫn giữ nguyên, chỉ thay Workplace.findOne() thành Workplace.findById(workplaceId)
+        const distance = getDistanceInMeters(numLatitude, numLongitude, workplace.latitude, workplace.longitude);
+        if (distance > MAX_DISTANCE_METERS) {
+            if (!reason) {
+                return { status: 400, ok: false, message: "Bạn đang ở ngoài phạm vi. Vui lòng cung cấp lý do để check-out." };
             }
+            updateData[`${shift}.is_remote_check_out`] = true;
+            updateData[`${shift}.check_out_reason`] = reason;
         }
 
         const checkOutTime = new Date();
@@ -242,11 +260,11 @@ const checkOutService = async ({ userId, checkOutData }) => {
         );
 
         const updatedRecord = await Attendance.findById(attendanceRecord._id);
-        return { 
-            status: 200, 
-            ok: true, 
-            message: ATTENDANCE_MESSAGES.CHECK_OUT_SUCCESS, 
-            data: updatedRecord 
+        return {
+            status: 200,
+            ok: true,
+            message: ATTENDANCE_MESSAGES.CHECK_OUT_SUCCESS,
+            data: updatedRecord
         };
     } catch (error) {
         console.error("ERROR in checkOutService:", error);

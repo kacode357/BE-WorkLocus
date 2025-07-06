@@ -72,12 +72,25 @@ const getEmployeeDetailsByIdController = (req, res) => {
         userIdToView: req.params.id // Lấy id từ URL
     }), res);
 };
-const updateWorkplaceLocationController = (req, res) => {
-    handleRequest(() => AdminService.updateWorkplaceLocationService(req.body), res);
+const createWorkplaceController = (req, res) => {
+    handleRequest(() => AdminService.createWorkplaceService(req.body), res);
 };
-const getWorkplaceLocationController = (req, res) => {
-    handleRequest(() => AdminService.getWorkplaceLocationService(), res);
+
+const searchWorkplacesController = (req, res) => {
+    handleRequest(() => AdminService.searchWorkplacesService({ pageInfo: req.body.pageInfo }), res);
 };
+
+const updateWorkplaceByIdController = (req, res) => {
+    handleRequest(() => AdminService.updateWorkplaceByIdService({
+        workplaceId: req.params.id,
+        updateData: req.body
+    }), res);
+};
+
+const deleteWorkplaceController = (req, res) => {
+    handleRequest(() => AdminService.deleteWorkplaceService({ workplaceId: req.params.id }), res);
+};
+
 const createPMByAdminController = (req, res) => {
     handleRequest(() => AdminService.createPMByAdminService(req.body), res);
 };
@@ -140,6 +153,8 @@ module.exports = {
 
     updateEmployeeSalaryController,
     getEmployeeDetailsByIdController,
-    updateWorkplaceLocationController,
-    getWorkplaceLocationController
+    createWorkplaceController,
+    searchWorkplacesController,
+    updateWorkplaceByIdController,
+    deleteWorkplaceController,
 };

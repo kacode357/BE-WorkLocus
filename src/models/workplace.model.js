@@ -3,11 +3,9 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const workplaceSchema = new Schema({
-    // << THÊM TRƯỜNG MỚI VÀO ĐÂY >>
     name: {
         type: String,
         required: true,
-       
     },
     latitude: {
         type: Number,
@@ -16,6 +14,11 @@ const workplaceSchema = new Schema({
     longitude: {
         type: Number,
         required: true,
+    },
+    // << THÊM TRƯỜNG MỚI ĐỂ XOÁ MỀM >>
+    is_deleted: {
+        type: Boolean,
+        default: false,
     },
 }, {
     timestamps: true,

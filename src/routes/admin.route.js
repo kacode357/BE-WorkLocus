@@ -27,8 +27,11 @@ router.post("/create-tl", AdminController.createTLByAdminController);
 
 // === Route quản lý lương & địa điểm ===
 router.put("/users/:id/salary", AdminController.updateEmployeeSalaryController);
-router.put("/workplace", AdminController.updateWorkplaceLocationController);
-router.get("/workplace", AdminController.getWorkplaceLocationController);
+
+router.post("/workplaces/search", AdminController.searchWorkplacesController); // Lấy danh sách (dùng POST để nhận body)
+router.post("/workplaces", AdminController.createWorkplaceController); // Tạo mới
+router.patch("/workplaces/:id", AdminController.updateWorkplaceByIdController); // Sửa (dùng PATCH hợp lý hơn)
+router.delete("/workplaces/:id", AdminController.deleteWorkplaceController); 
 
 // === Các route tìm kiếm/báo cáo & dashboard ===
 router.post("/attendances/search", AdminController.searchAllAttendancesController);
