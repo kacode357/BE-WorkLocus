@@ -97,7 +97,7 @@ const completeTaskService = async ({ taskId }) => {
     }
 };
 
-const searchAvailableTasksService = async ({ user, searchCondition, pageInfo }) => {
+const searchTasksService = async ({ user, searchCondition, pageInfo }) => {
     try {
         const { project_id, keyword } = searchCondition || {};
         const { pageNum, pageSize } = pageInfo || {};
@@ -120,7 +120,6 @@ const searchAvailableTasksService = async ({ user, searchCondition, pageInfo }) 
         }
 
         const queryConditions = {
-            assignee_id: null,
             is_deleted: { $ne: true },
             project_id: { $in: userProjectIds }
         };
@@ -135,14 +134,24 @@ const searchAvailableTasksService = async ({ user, searchCondition, pageInfo }) 
         const totalRecords = await Task.countDocuments(queryConditions);
         const tasks = await Task.find(queryConditions)
             .populate('project_id', 'name type')
+            .populate('assignee_id', 'full_name email') // <-- DÒNG NÀY LÀM VIỆC ĐÓ
             .sort({ created_at: -1 })
             .skip(skip)
-            .limit(limit);
+            .limit(limit)
+            .lean();
+
+        const tasksWithOwnership = tasks.map(task => {
+            const isMine = task.assignee_id ? task.assignee_id._id.equals(user._id) : false;
+            return {
+                ...task,
+                is_mine: isMine
+            };
+        });
 
         return {
             status: 200, ok: true, message: TASK_MESSAGES.GET_AVAILABLE_TASKS_SUCCESS,
             data: {
-                records: tasks,
+                records: tasksWithOwnership,
                 pagination: {
                     currentPage: page,
                     totalPages: Math.ceil(totalRecords / limit),
@@ -152,7 +161,7 @@ const searchAvailableTasksService = async ({ user, searchCondition, pageInfo }) 
         };
 
     } catch (error) {
-        console.error("ERROR in searchAvailableTasksService:", error);
+        console.error("ERROR in searchTasksService:", error);
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
@@ -252,7 +261,7 @@ const createTaskService = async ({ taskData, reporter }) => {
 
 module.exports = {
     updateTaskService,
-    searchAvailableTasksService,
+    searchTasksService,
     joinTaskService,
     createTaskService,
     completeTaskService,

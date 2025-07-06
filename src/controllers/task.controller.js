@@ -10,7 +10,7 @@ const completeTaskController = (req, res) => {
 
 const searchAvailableTasksController = (req, res) => {
     const { searchCondition = {}, pageInfo = {} } = req.body;
-    handleRequest(() => TaskService.searchAvailableTasksService({
+    handleRequest(() => TaskService.searchTasksService({
         user: req.user,
         searchCondition,
         pageInfo
