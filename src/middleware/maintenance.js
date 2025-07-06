@@ -25,7 +25,7 @@ const checkMaintenanceMode = async (req, res, next) => {
             }
             
             // Đối với tất cả các user khác (không phải admin hoặc không có token), chặn lại
-            return res.status(503).json({ // 503 Service Unavailable
+            return res.status(200).json({ // 503 Service Unavailable
                 ok: false,
                 is_maintenance: true,
                 message: settings.maintenance_message,

@@ -818,10 +818,13 @@ const searchProjectMembersService = async ({ projectId, searchCondition, pageInf
 };
 const getSystemSettingsService = async () => {
     try {
+        // Tìm một bản ghi setting duy nhất
         const settings = await Setting.findOne({});
 
-        // Nếu không có setting trong DB, trả về giá trị mặc định, ok: true
+        // Nếu không có bản ghi nào trong DB
         if (!settings) {
+            // Vẫn trả về 200 OK, kèm theo data mặc định
+            // Để client app có thể hoạt động bình thường với giá trị fallback
             return {
                 status: 200,
                 ok: true,
@@ -829,27 +832,23 @@ const getSystemSettingsService = async () => {
                 data: {
                     is_maintenance_mode: false,
                     maintenance_message: "",
-                    min_app_version: "1.0.0"
+                    min_app_version: "1.0.0" 
                 }
             };
         }
 
-        // Tìm thấy setting, trả về data, ok: true
-        return { status: 200, ok: true, message: "Lấy cài đặt hệ thống thành công.", data: settings };
+        // Nếu tìm thấy, trả về 200 OK và data từ DB
+        return { 
+            status: 200, 
+            ok: true, 
+            message: "Lấy cài đặt hệ thống thành công.", 
+            data: settings 
+        };
 
     } catch (error) {
-        // Ghi lại lỗi để mày biết mà sửa
+        // Chỉ khi có lỗi hệ thống (vd: mất kết nối DB) thì mới trả về 500
         console.error("ERROR in getSystemSettingsService:", error);
-
-        // TAO SỬA Ở ĐÂY
-        // Thay vì trả về status 500, tao trả về 200 nhưng ok: false
-        // Phía controller sẽ dựa vào đây để gửi response.
-        return {
-            status: 200, // Luôn là 200
-            ok: false,   // Báo hiệu cho client biết là có lỗi
-            message: "Lỗi hệ thống khi lấy cài đặt.", // Mày có thể dùng GENERAL_MESSAGES.SYSTEM_ERROR
-            data: null   // Không có dữ liệu khi lỗi
-        };
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
 module.exports = {
