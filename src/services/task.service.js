@@ -4,6 +4,7 @@ const Project = require("../models/project.model.js");
 // Bỏ User đi vì không cần check assignee nữa
 const { TASK_MESSAGES } = require("../constants/task.messages.js");
 const { GENERAL_MESSAGES } = require("../constants/auth.messages.js");
+const Attendance = require("../models/attendance.model.js");
 
 const updateTaskService = async ({ taskId, updateData }) => {
     try {
