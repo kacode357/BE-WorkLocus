@@ -190,10 +190,39 @@ const joinTaskService = async ({ taskId, user }) => {
             return { status: 403, ok: false, message: "Bạn phải là thành viên của dự án mới có thể nhận việc." };
         }
 
-        // Nếu ổn, gán việc cho user và đổi trạng thái
+        // Nếu các bước kiểm tra trên đều ổn, tiến hành gán việc
         task.assignee_id = user._id;
         task.status = 'in_progress'; // Tự động chuyển sang 'đang làm'
         await task.save();
+
+        // ====================================================================
+        // TAO TÍCH HỢP LOGIC GHI NHẬN VÀO BẢNG CHẤM CÔNG VÀO ĐÂY
+        // ====================================================================
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const todaysAttendance = await Attendance.findOne({
+            user_id: user._id,
+            work_date: today,
+        });
+
+        // Chỉ ghi nhận task nếu user đã check-in và chưa check-out trong ngày
+        if (todaysAttendance) {
+            const isWorkingMorning = todaysAttendance.morning.check_in_time && !todaysAttendance.morning.check_out_time;
+            const isWorkingAfternoon = todaysAttendance.afternoon.check_in_time && !todaysAttendance.afternoon.check_out_time;
+
+            if (isWorkingMorning || isWorkingAfternoon) {
+                // Dùng $addToSet để đảm bảo không có taskId trùng lặp
+                await Attendance.updateOne(
+                    { _id: todaysAttendance._id },
+                    { $addToSet: { tasks_worked_on: task._id } }
+                );
+                console.log(`Task ${task._id} logged for user ${user._id} on ${today.toDateString()}`);
+            }
+        }
+        // Nếu không tìm thấy bản ghi chấm công hoặc user không trong ca làm việc,
+        // thì cứ bỏ qua, không báo lỗi. Việc nhận task vẫn thành công.
+        // ====================================================================
 
         return { status: 200, ok: true, message: "Nhận việc thành công.", data: task };
 
