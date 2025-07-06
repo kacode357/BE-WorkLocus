@@ -445,7 +445,7 @@ const getDashboardStatsService = async () => {
                         _id: null, // Nhóm tất cả lại
                         // Tính tổng cho từng trường lương và thưởng
                         totalSalaryPaid: { $sum: '$total_salary' },
-                        totalBaseSalaryPaid: { $sum: '$base_salary' },
+                    
                         totalDiligenceBonusPaid: { $sum: '$diligence_bonus' },
                         totalPerformanceBonusPaid: { $sum: '$performance_bonus' },
                         totalOtherBonusPaid: { $sum: '$other_bonus' }
