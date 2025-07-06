@@ -366,28 +366,43 @@ const searchUsersService = async ({ searchCondition, pageInfo }) => {
     try {
         const { keyword, role, is_activated } = searchCondition || {};
         const { pageNum, pageSize } = pageInfo || {};
+
         const page = parseInt(pageNum) || 1;
         const limit = parseInt(pageSize) || 10;
         const skip = (page - 1) * limit;
+
         const queryConditions = { is_deleted: { $ne: true } };
+
         if (keyword) {
-            queryConditions.$or = [
+            // << PHẦN LOGIC MỚI >>
+            const orConditions = [
                 { full_name: { $regex: keyword, $options: 'i' } },
                 { email: { $regex: keyword, $options: 'i' } }
             ];
+
+            // Kiểm tra xem keyword có phải là một ObjectId hợp lệ không
+            if (mongoose.Types.ObjectId.isValid(keyword)) {
+                // Nếu đúng, thêm điều kiện tìm theo _id vào mảng
+                orConditions.push({ _id: keyword });
+            }
+
+            queryConditions.$or = orConditions;
         }
+
         if (role) {
             queryConditions.role = role;
         }
         if (typeof is_activated === 'boolean') {
             queryConditions.is_activated = is_activated;
         }
+
         const totalRecords = await User.countDocuments(queryConditions);
         const records = await User.find(queryConditions)
             .select('-password -refresh_token')
             .sort({ created_at: -1 })
             .skip(skip)
             .limit(limit);
+            
         return {
             status: 200,
             ok: true,
