@@ -818,30 +818,38 @@ const searchProjectMembersService = async ({ projectId, searchCondition, pageInf
 };
 const getSystemSettingsService = async () => {
     try {
-        // Tìm và lấy ra cài đặt hiện tại từ model Setting
-        // Nếu không có, nó sẽ trả về null hoặc một object rỗng tùy cấu hình model của mày.
         const settings = await Setting.findOne({});
 
+        // Nếu không có setting trong DB, trả về giá trị mặc định, ok: true
         if (!settings) {
-            // Nếu chưa có cài đặt nào, trả về một trạng thái mặc định hoặc báo lỗi tùy ý.
-            // Ví dụ: trả về một object với các giá trị mặc định.
             return {
                 status: 200,
                 ok: true,
-                message: "Chưa có cài đặt hệ thống nào được thiết lập. Trả về giá trị mặc định.",
+                message: "Chưa có cài đặt, trả về giá trị mặc định.",
                 data: {
                     is_maintenance_mode: false,
                     maintenance_message: "",
-                    min_app_version: "1.0.0" // Một giá trị mặc định
+                    min_app_version: "1.0.0"
                 }
             };
         }
 
+        // Tìm thấy setting, trả về data, ok: true
         return { status: 200, ok: true, message: "Lấy cài đặt hệ thống thành công.", data: settings };
 
     } catch (error) {
+        // Ghi lại lỗi để mày biết mà sửa
         console.error("ERROR in getSystemSettingsService:", error);
-        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+
+        // TAO SỬA Ở ĐÂY
+        // Thay vì trả về status 500, tao trả về 200 nhưng ok: false
+        // Phía controller sẽ dựa vào đây để gửi response.
+        return {
+            status: 200, // Luôn là 200
+            ok: false,   // Báo hiệu cho client biết là có lỗi
+            message: "Lỗi hệ thống khi lấy cài đặt.", // Mày có thể dùng GENERAL_MESSAGES.SYSTEM_ERROR
+            data: null   // Không có dữ liệu khi lỗi
+        };
     }
 };
 module.exports = {
