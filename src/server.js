@@ -29,7 +29,7 @@ app.use(async (req, res, next) => {
 });
 
 // --- MIDDLEWARE KIỂM TRA CHẾ ĐỘ BẢO TRÌ ---
-// app.use(checkMaintenanceMode);
+app.use(checkMaintenanceMode);
 
 // --- SỬ DỤNG ROUTER CHÍNH ---
 app.use("/", apiRoutes);
