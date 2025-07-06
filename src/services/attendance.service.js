@@ -7,12 +7,14 @@ const { getDistanceInMeters } = require("../utils/location");
 
 const getAttendanceStatusService = async ({ userId }) => {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
 
         const todaysAttendance = await Attendance.findOne({
             user_id: userId,
-            work_date: today,
+            work_date: { $gte: startOfDay, $lte: endOfDay },
         });
 
         if (!todaysAttendance) {
@@ -21,9 +23,8 @@ const getAttendanceStatusService = async ({ userId }) => {
                 ok: true,
                 message: ATTENDANCE_MESSAGES.NOT_YET_CHECKED_IN,
                 data: {
-                    status: 'NOT_CHECKED_IN',
-                    morning: { isCheckedIn: false, isCheckedOut: false },
-                    afternoon: { isCheckedIn: false, isCheckedOut: false },
+                    morning: { status: 'NOT_CHECKED_IN', isCheckedIn: false, isCheckedOut: false },
+                    afternoon: { status: 'NOT_CHECKED_IN', isCheckedIn: false, isCheckedOut: false },
                 },
             };
         }
@@ -83,15 +84,20 @@ const checkInService = async ({ userId, checkInData }) => {
             return { status: 400, ok: false, message: "Tọa độ latitude hoặc longitude không hợp lệ." };
         }
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
 
-        let attendanceRecord = await Attendance.findOne({ user_id: userId, work_date: today });
+        let attendanceRecord = await Attendance.findOne({
+            user_id: userId,
+            work_date: { $gte: startOfDay, $lte: endOfDay },
+        });
 
         if (!attendanceRecord) {
             attendanceRecord = await Attendance.create({
                 user_id: userId,
-                work_date: today,
+                work_date: startOfDay, // Luôn tạo mới với thời gian bắt đầu của ngày
                 morning: {},
                 afternoon: {},
             });
@@ -148,8 +154,10 @@ const checkInService = async ({ userId, checkInData }) => {
 
 const checkOutService = async ({ userId, checkOutData }) => {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
 
         let { latitude, longitude, reason, shift } = checkOutData;
 
@@ -159,7 +167,7 @@ const checkOutService = async ({ userId, checkOutData }) => {
 
         const attendanceRecord = await Attendance.findOne({
             user_id: userId,
-            work_date: today,
+            work_date: { $gte: startOfDay, $lte: endOfDay },
         });
 
         if (!attendanceRecord) {
@@ -270,10 +278,7 @@ const getMyAttendanceHistoryService = async ({ userId, searchCondition, pageInfo
     }
 };
 
-
-
 module.exports = {
- 
     getAttendanceStatusService,
     checkInService,
     checkOutService,
