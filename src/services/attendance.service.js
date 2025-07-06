@@ -5,6 +5,20 @@ const { ATTENDANCE_MESSAGES } = require("../constants/attendance.messages");
 const { GENERAL_MESSAGES } = require("../constants/auth.messages");
 const { getDistanceInMeters } = require("../utils/location");
 
+const parseWorkTimeToMinutes = (timeString) => {
+    if (!timeString) return 0;
+    const match = timeString.match(/(\d+)\s*giờ\s*(\d+)\s*phút/);
+    if (!match) return 0;
+    const hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    return (hours * 60) + minutes;
+};
+const formatMinutesToWorkTime = (totalMinutes) => {
+    if (isNaN(totalMinutes) || totalMinutes < 0) return "0 giờ 0 phút";
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours} giờ ${minutes} phút`;
+};
 const getAttendanceStatusService = async ({ userId }) => {
     try {
         const startOfDay = new Date();
@@ -211,10 +225,16 @@ const checkOutService = async ({ userId, checkOutData }) => {
 
         const checkOutTime = new Date();
         const durationMs = checkOutTime - attendanceRecord[shift].check_in_time;
-        const totalMinutes = Math.floor(durationMs / (1000 * 60));
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-        updateData[`${shift}.total_work_time`] = `${hours} giờ ${minutes} phút`;
+        const totalMinutesThisShift = Math.floor(durationMs / (1000 * 60));
+        updateData[`${shift}.total_work_time`] = formatMinutesToWorkTime(totalMinutesThisShift);
+
+        // Tính toán lại tổng thời gian cả ngày
+        const otherShift = shift === 'morning' ? 'afternoon' : 'morning';
+        const morningMinutes = shift === 'morning' ? totalMinutesThisShift : parseWorkTimeToMinutes(attendanceRecord.morning.total_work_time);
+        const afternoonMinutes = shift === 'afternoon' ? totalMinutesThisShift : parseWorkTimeToMinutes(attendanceRecord.afternoon.total_work_time);
+        
+        const totalDayMinutes = morningMinutes + afternoonMinutes;
+        updateData['total_work_time'] = formatMinutesToWorkTime(totalDayMinutes);
 
         await Attendance.updateOne(
             { _id: attendanceRecord._id },

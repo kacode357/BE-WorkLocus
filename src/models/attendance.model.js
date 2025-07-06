@@ -34,6 +34,7 @@ const attendanceSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Task"
         }],
+        total_work_time: { type: String, default: null },
         is_deleted: { type: Boolean, default: false },
     },
     {
