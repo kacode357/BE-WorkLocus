@@ -17,7 +17,7 @@ router.patch(
 );
 
 router.post(
-    "/available-for-join",
+    "/search",
     verifyToken, // Cần biết user là ai để tìm đúng việc
     TaskController.searchAvailableTasksController
 );
