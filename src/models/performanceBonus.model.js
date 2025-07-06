@@ -6,7 +6,7 @@ const performanceBonusSchema = new mongoose.Schema(
             type: String,
             required: true,
             uppercase: true,
-            unique: true, // << QUAY LẠI DÙNG unique: true ĐƠN GIẢN >>
+            unique: true, 
         },
         bonus_amount: {
             type: Number,

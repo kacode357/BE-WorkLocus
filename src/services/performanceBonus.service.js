@@ -1,127 +1,103 @@
-// File: services/performanceBonus.service.js
 const PerformanceBonus = require('../models/performanceBonus.model');
+const { GENERAL_MESSAGES } = require('../constants/auth.messages');
 
-// Lấy tất cả các mức thưởng
+
 const searchBonusesService = async ({ searchCondition, pageInfo }) => {
     try {
-        // Lấy các tham số từ request body
-        const { keyword, is_active } = searchCondition || {}; // Sửa is_activated thành is_active cho khớp model
+        const { keyword, is_active } = searchCondition || {};
         const { pageNum, pageSize } = pageInfo || {};
 
-        // Cài đặt phân trang
         const page = parseInt(pageNum) || 1;
         const limit = parseInt(pageSize) || 10;
         const skip = (page - 1) * limit;
 
-        // Xây dựng điều kiện truy vấn
         const queryConditions = {};
-
-        // 1. Lọc theo trạng thái active/inactive
-        if (typeof is_active === 'boolean') {
-            queryConditions.is_active = is_active;
-        }
-
-        // 2. Tìm kiếm theo keyword (tìm trong 'grade' và 'description')
+        // << THAY ĐỔI THEO is_active >>
+        // Mặc định chỉ lấy những bonus đang active (is_active: true)
+        queryConditions.is_active = (typeof is_active === 'boolean') ? is_active : true;
+        
         if (keyword) {
-            const searchRegex = { $regex: keyword, $options: 'i' }; // 'i' để không phân biệt hoa thường
-            queryConditions.$or = [
-                { grade: searchRegex },
-                { description: searchRegex }
-            ];
+            queryConditions.grade = { $regex: keyword, $options: 'i' };
         }
 
-        // Thực hiện truy vấn
         const totalRecords = await PerformanceBonus.countDocuments(queryConditions);
-        const records = await PerformanceBonus.find(queryConditions)
-            .sort({ bonus_amount: -1 }) // Vẫn giữ sort theo mức thưởng giảm dần
-            .skip(skip)
-            .limit(limit);
+        const records = await PerformanceBonus.find(queryConditions).skip(skip).limit(limit).sort({ bonus_amount: -1 });
 
-        return {
-            status: 200, ok: true, message: "Tìm kiếm mức thưởng thành công.",
-            data: {
-                records,
-                pagination: {
-                    currentPage: page,
-                    totalPages: Math.ceil(totalRecords / limit),
-                    totalRecords,
-                },
-            },
-        };
-
+        return { status: 200, ok: true, message: "Lấy danh sách mức thưởng thành công.", data: { records, pagination: { currentPage: page, totalPages: Math.ceil(totalRecords / limit), totalRecords } } };
     } catch (error) {
         console.error("ERROR in searchBonusesService:", error);
-        // Giả sử mày có GENERAL_MESSAGES
-        return { status: 500, ok: false, message: "Lỗi hệ thống khi tìm kiếm mức thưởng." };
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
-}
+};
 
-// Tạo một mức thưởng mới
 const createBonusService = async (bonusData) => {
     try {
-        const { grade, bonus_amount, description } = bonusData || {};
+        const { grade, bonus_amount, description } = bonusData;
         if (!grade || bonus_amount === undefined) {
-            return { status: 400, ok: false, message: "Grade và bonus_amount là bắt buộc." };
+            return { status: 400, ok: false, message: "Vui lòng cung cấp hạng và mức thưởng." };
         }
 
-        // Logic giờ rất đơn giản: Cứ tạo mới
-        const newBonus = await PerformanceBonus.create({
-            grade: grade.toUpperCase(),
-            bonus_amount,
-            description
-        });
+        const existingBonus = await PerformanceBonus.findOne({ grade: grade.toUpperCase() });
+        if (existingBonus) {
+            // << THAY ĐỔI THEO is_active >>
+            // Nếu đã tồn tại nhưng không active -> khôi phục và cập nhật
+            if (!existingBonus.is_active) {
+                existingBonus.is_active = true;
+                existingBonus.bonus_amount = bonus_amount;
+                existingBonus.description = description;
+                await existingBonus.save();
+                return { status: 200, ok: true, message: "Khôi phục và cập nhật mức thưởng thành công.", data: existingBonus };
+            }
+            return { status: 409, ok: false, message: "Hạng thưởng này đã tồn tại." };
+        }
+
+        const newBonus = await PerformanceBonus.create({ grade: grade.toUpperCase(), bonus_amount, description });
         return { status: 201, ok: true, message: "Tạo mức thưởng mới thành công.", data: newBonus };
-
     } catch (error) {
-        // Nếu có lỗi, khả năng cao nhất là lỗi trùng lặp do unique index
-        if (error.code === 11000) {
-             const { grade } = bonusData || {};
-             return { status: 409, ok: false, message: `Hạng '${grade}' đã tồn tại và đang hoạt động.` };
-        }
         console.error("ERROR in createBonusService:", error);
-        return { status: 500, ok: false, message: "Lỗi hệ thống khi tạo mức thưởng." };
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
-
-// Cập nhật một mức thưởng
-const updateBonusService = async (grade, updateData) => {
-    const { bonus_amount, description, is_active } = updateData;
-    const updatedBonus = await PerformanceBonus.findOneAndUpdate(
-        { grade },
-        { bonus_amount, description, is_active },
-        { new: true }
-    );
-    if (!updatedBonus) {
-        return { status: 404, ok: false, message: `Không tìm thấy hạng '${grade}'.` };
-    }
-    return { status: 200, ok: true, message: `Cập nhật hạng '${grade}' thành công.`, data: updatedBonus };
-};
-
-// Xóa một mức thưởng
-const softDeleteBonusService = async (grade) => {
+const updateBonusService = async (bonusId, updateData) => {
     try {
-        // Bước 1: Tìm bản ghi đang active để xóa
-        const bonusToDelete = await PerformanceBonus.findOne({ 
-            grade: grade.toUpperCase(), 
-            is_active: true 
-        });
+        // Vẫn không cho phép cập nhật grade
+        delete updateData.grade;
 
-        if (!bonusToDelete) {
-            return { status: 404, ok: false, message: `Không tìm thấy hạng '${grade}' đang hoạt động.` };
+        // << SỬA LẠI ĐÂY: Tìm bằng ID >>
+        const updatedBonus = await PerformanceBonus.findByIdAndUpdate(
+            bonusId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedBonus || !updatedBonus.is_active) {
+            return { status: 404, ok: false, message: "Không tìm thấy hạng thưởng này hoặc đã bị vô hiệu hóa." };
         }
 
-        // Bước 2: Sửa đổi các trường để vô hiệu hóa và làm cho nó độc nhất
-        bonusToDelete.is_active = false;
-        // Gắn thêm timestamp để grade trở nên độc nhất, giải phóng grade cũ
-        bonusToDelete.grade = `${bonusToDelete.grade}_deleted_${Date.now()}`;
+        return { status: 200, ok: true, message: "Cập nhật mức thưởng thành công.", data: updatedBonus };
+    } catch (error) {
+        console.error("ERROR in updateBonusService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 
-        // Bước 3: Lưu lại
-        await bonusToDelete.save();
-        
-        return { status: 200, ok: true, message: `Vô hiệu hóa hạng '${grade}' thành công.` };
-    } catch(error) {
-       console.error("ERROR in softDeleteBonusService:", error);
-       return { status: 500, ok: false, message: "Lỗi hệ thống khi vô hiệu hóa mức thưởng." };
+const softDeleteBonusService = async (bonusId) => {
+    try {
+        // << SỬA LẠI ĐÂY: Tìm bằng ID >>
+        const deletedBonus = await PerformanceBonus.findOneAndUpdate(
+            { _id: bonusId, is_active: true }, // Tìm bonus đang active bằng ID
+            { $set: { is_active: false } }, // Vô hiệu hóa nó
+            { new: true }
+        );
+
+        if (!deletedBonus) {
+            return { status: 404, ok: false, message: "Không tìm thấy hạng thưởng này hoặc đã bị vô hiệu hóa." };
+        }
+
+        return { status: 200, ok: true, message: "Vô hiệu hóa mức thưởng thành công." };
+    } catch (error) {
+        console.error("ERROR in softDeleteBonusService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
 
