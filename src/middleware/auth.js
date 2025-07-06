@@ -192,7 +192,20 @@ const checkTaskManagementPermission = async (req, res, next) => {
         return res.status(500).json({ ok: false, message: "Lỗi hệ thống khi kiểm tra quyền." });
     }
 };
+const checkAdminOrEmployee = (req, res, next) => {
+    console.log(">>> checkAdminOrEmployee middleware called");
+    const userRole = req.user.role;
+    if (userRole === 'admin' || userRole === 'employee') {
+        next();
+    } else {
+        return res.status(403).json({
+            ok: false,
+            message: "Truy cập bị từ chối. Yêu cầu quyền Admin hoặc Employee.",
+        });
+    }
+};
 module.exports = {
+    checkAdminOrEmployee,
     verifyToken,
     checkAdmin,
     checkAdminOrPM,

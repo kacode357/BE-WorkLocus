@@ -5,6 +5,8 @@ const AdminController = require("../controllers/admin.controller.js");
 const { verifyToken, checkAdmin } = require("../middleware/auth.js");
 
 router.get("/settings", AdminController.getSystemSettingsController);
+
+router.post("/workplaces/search" ,AdminController.searchWorkplacesController);
 // Áp dụng middleware cho TẤT CẢ các route trong file này
 router.use(verifyToken, checkAdmin);
 
@@ -28,7 +30,7 @@ router.post("/create-tl", AdminController.createTLByAdminController);
 // === Route quản lý lương & địa điểm ===
 router.put("/users/:id/salary", AdminController.updateEmployeeSalaryController);
 
-router.post("/workplaces/search", AdminController.searchWorkplacesController); // Lấy danh sách (dùng POST để nhận body)
+
 router.post("/workplaces", AdminController.createWorkplaceController); // Tạo mới
 router.patch("/workplaces/:id", AdminController.updateWorkplaceByIdController); // Sửa (dùng PATCH hợp lý hơn)
 router.delete("/workplaces/:id", AdminController.deleteWorkplaceController); 
