@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const User = require("../models/user.model");
 const Attendance = require("../models/attendance.model");
-// const WorkReport = require("../models/workReport.model");
+const Payroll = require("../models/payroll.model.js");
 const Workplace = require("../models/workplace.model");
 const Project = require("../models/project.model");
 const Task = require("../models/task.model");
@@ -423,50 +423,69 @@ const searchUsersService = async ({ searchCondition, pageInfo }) => {
     }
 };
 
-// const getDashboardStatsService = async () => {
-//     try {
-//         const employeeCount = await User.countDocuments({ role: 'employee', is_deleted: { $ne: true } });
-//         const adminCount = await User.countDocuments({ role: 'admin', is_deleted: { $ne: true } });
-//         const workReportCount = await WorkReport.countDocuments({ is_deleted: { $ne: true } });
-//         const employees = await User.find({ role: 'employee', is_deleted: { $ne: true } }).select('_id');
-//         const employeeIds = employees.map(emp => emp._id);
-//         const attendances = await Attendance.find({ user_id: { $in: employeeIds } });
-//         let totalWorkHours = 0;
-//         let totalAttendanceRecords = 0;
-//         for (const attendance of attendances) {
-//             if (attendance.total_work_time) {
-//                 const timeParts = attendance.total_work_time.split(' ');
-//                 let hours = 0;
-//                 let minutes = 0;
-//                 if (timeParts.length >= 2) {
-//                     hours = parseInt(timeParts[0]) || 0;
-//                     if (timeParts.length >= 4) {
-//                         minutes = parseInt(timeParts[2]) || 0;
-//                     }
-//                     totalWorkHours += hours + (minutes / 60);
-//                     totalAttendanceRecords++;
-//                 }
-//             }
-//         }
-//         const averageWorkHoursPerEmployee = employeeCount > 0 && totalAttendanceRecords > 0
-//             ? (totalWorkHours / employeeCount).toFixed(2)
-//             : 0;
-//         return {
-//             status: 200,
-//             ok: true,
-//             message: ADMIN_MESSAGES.GET_DASHBOARD_STATS_SUCCESS,
-//             data: {
-//                 employeeCount,
-//                 adminCount,
-//                 workReportCount,
-//                 averageWorkHoursPerEmployee: parseFloat(averageWorkHoursPerEmployee),
-//             },
-//         };
-//     } catch (error) {
-//         console.error("ERROR in getDashboardStatsService:", error);
-//         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
-//     }
-// };
+const getDashboardStatsService = async () => {
+    try {
+        const [
+            employeeCount,
+            adminCount,
+            projectCount,
+            taskCount,
+            payrollStats
+        ] = await Promise.all([
+            User.countDocuments({ role: 'employee', is_deleted: { $ne: true } }),
+            User.countDocuments({ role: 'admin', is_deleted: { $ne: true } }),
+            Project.countDocuments({ is_deleted: { $ne: true } }),
+            Task.countDocuments({ is_deleted: { $ne: true } }),
+            
+            // << NÂNG CẤP AGGREGATION Ở ĐÂY >>
+            Payroll.aggregate([
+                { $match: { status: 'pending' } },
+                { 
+                    $group: { 
+                        _id: null, // Nhóm tất cả lại
+                        // Tính tổng cho từng trường lương và thưởng
+                        totalSalaryPaid: { $sum: '$total_salary' },
+                        totalBaseSalaryPaid: { $sum: '$base_salary' },
+                        totalDiligenceBonusPaid: { $sum: '$diligence_bonus' },
+                        totalPerformanceBonusPaid: { $sum: '$performance_bonus' },
+                        totalOtherBonusPaid: { $sum: '$other_bonus' }
+                    } 
+                }
+            ])
+        ]);
+
+        // payrollStats trả về là một mảng, ví dụ: [{ _id: null, totalSalaryPaid: 50M, ... }]
+        // Lấy các giá trị total, nếu không có record nào thì mặc định là 0
+        const {
+            totalSalaryPaid = 0,
+            totalBaseSalaryPaid = 0,
+            totalDiligenceBonusPaid = 0,
+            totalPerformanceBonusPaid = 0,
+            totalOtherBonusPaid = 0,
+        } = payrollStats[0] || {}; // Dùng || {} để tránh lỗi nếu mảng rỗng
+
+        return {
+            status: 200,
+            ok: true,
+            message: ADMIN_MESSAGES.GET_DASHBOARD_STATS_SUCCESS,
+            data: {
+                employeeCount,
+                adminCount,
+                projectCount,
+                taskCount,
+                // Trả về tất cả các số liệu đã tính
+                totalSalaryPaid,
+                totalBaseSalaryPaid,
+                totalDiligenceBonusPaid,
+                totalPerformanceBonusPaid,
+                totalOtherBonusPaid,
+            },
+        };
+    } catch (error) {
+        console.error("ERROR in getDashboardStatsService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 
 const updateEmployeeSalaryService = async ({ userIdToUpdate, salaryData }) => {
     try {
@@ -797,6 +816,7 @@ const searchProjectMembersService = async ({ projectId, searchCondition, pageInf
     }
 };
 module.exports = {
+    getDashboardStatsService,
     searchProjectMembersService,
     updateMaintenanceModeService,
     addMemberToProjectService,
