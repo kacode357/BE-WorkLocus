@@ -903,7 +903,51 @@ const getSystemSettingsService = async () => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const updateUserRoleService = async ({ userIdToUpdate, newRole, adminId }) => {
+    try {
+        // Check 1: Admin không được tự đổi vai trò của chính mình qua API này
+        if (userIdToUpdate === adminId) {
+            return { status: 400, ok: false, message: ADMIN_MESSAGES.CANNOT_PERFORM_ACTION_ON_SELF };
+        }
+
+        // Check 2: Vai trò mới có hợp lệ không?
+        const validRoles = User.schema.path('role').enumValues;
+        if (!newRole || !validRoles.includes(newRole)) {
+            return { status: 400, ok: false, message: `Vai trò '${newRole}' không hợp lệ. Các vai trò hợp lệ: ${validRoles.join(', ')}` };
+        }
+        
+        // Check 3: Không cho phép nâng cấp lên 'admin' qua API này để bảo mật
+        if (newRole === 'admin') {
+            return { status: 403, ok: false, message: "Không thể nâng cấp lên vai trò 'admin' qua API này. Vui lòng dùng API tạo admin riêng." };
+        }
+
+        // Check 4: Tìm user và kiểm tra
+        const user = await User.findById(userIdToUpdate);
+        if (!user) {
+            return { status: 404, ok: false, message: ADMIN_MESSAGES.USER_NOT_FOUND };
+        }
+
+        if (user.role === newRole) {
+            return { status: 409, ok: false, message: `Người dùng này đã có vai trò '${newRole}'.` };
+        }
+
+        // Cập nhật và lưu lại
+        user.role = newRole;
+        await user.save();
+        
+        const userResponse = user.toObject();
+        delete userResponse.password;
+        delete userResponse.refresh_token;
+
+        return { status: 200, ok: true, message: `Cập nhật vai trò cho ${user.email} thành '${newRole}' thành công.`, data: userResponse };
+
+    } catch (error) {
+        console.error("ERROR in updateUserRoleService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
+    updateUserRoleService,
     getSystemSettingsService,
     getDashboardStatsService,
     searchProjectMembersService,
@@ -922,7 +966,6 @@ module.exports = {
     createPMByAdminService,
     createTLByAdminService,
     searchAllAttendancesService,
-   
     updateEmployeeSalaryService,
     getEmployeeDetailsByIdService,
     createWorkplaceService,

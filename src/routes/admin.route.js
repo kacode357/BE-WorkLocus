@@ -20,6 +20,7 @@ router.patch("/users/:id/unblock", AdminController.unblockUserController);
 router.patch("/users/:id/change-password", AdminController.adminChangePasswordController);
 router.delete("/users/:id", AdminController.softDeleteUserController);
 router.get("/users/:id", AdminController.getEmployeeDetailsByIdController);
+router.patch("/users/:id/role", AdminController.updateUserRoleController);
 
 // === Các route tạo tài khoản ===
 router.post("/create-admin", AdminController.createAdminAccountController);

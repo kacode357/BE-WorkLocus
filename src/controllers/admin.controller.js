@@ -132,7 +132,15 @@ const searchProjectMembersController = (req, res) => {
 const getSystemSettingsController = (req, res) => {
     handleRequest(() => AdminService.getSystemSettingsService(), res);
 };
+const updateUserRoleController = (req, res) => {
+    handleRequest(() => AdminService.updateUserRoleService({
+        userIdToUpdate: req.params.id,
+        newRole: req.body.role,
+        adminId: req.user._id.toString(),
+    }), res);
+};
 module.exports = {
+    updateUserRoleController,
     getSystemSettingsController,
     searchProjectMembersController,
     addMemberToProjectController,
@@ -150,7 +158,6 @@ module.exports = {
     createPMByAdminController,
     createTLByAdminController,
     searchAllAttendancesController,
-
     updateEmployeeSalaryController,
     getEmployeeDetailsByIdController,
     createWorkplaceController,
