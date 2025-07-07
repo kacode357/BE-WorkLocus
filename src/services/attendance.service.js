@@ -133,7 +133,7 @@ const checkInService = async ({ userId, checkInData }) => {
         }
 
         const distance = getDistanceInMeters(numLatitude, numLongitude, workplace.latitude, workplace.longitude);
-        const MAX_DISTANCE_METERS = 50;
+        const MAX_DISTANCE_METERS = 100;
 
         let updateData = {
             [`${shift}.check_in_time`]: new Date(),
@@ -229,7 +229,7 @@ const checkOutService = async ({ userId, checkOutData }) => {
             [`${shift}.check_out_reason`]: null,
         };
 
-        const MAX_DISTANCE_METERS = 50; // Khai báo lại để dễ nhìn
+        const MAX_DISTANCE_METERS = 100; // Khai báo lại để dễ nhìn
 
         // Logic kiểm tra khoảng cách vẫn giữ nguyên, chỉ thay Workplace.findOne() thành Workplace.findById(workplaceId)
         const distance = getDistanceInMeters(numLatitude, numLongitude, workplace.latitude, workplace.longitude);
