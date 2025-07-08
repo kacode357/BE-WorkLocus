@@ -5,6 +5,7 @@ const AdminController = require("../controllers/admin.controller.js");
 const { verifyToken, checkAdmin, checkAdminOrPM } = require("../middleware/auth.js");
 
 router.get("/settings", AdminController.getSystemSettingsController);
+router.post("/tasks/search",verifyToken,checkAdminOrPM, AdminController.searchAllTasksController);
 router.post("/attendances/search",verifyToken,checkAdminOrPM, AdminController.searchAllAttendancesController);
 router.post("/projects/search",verifyToken,checkAdminOrPM, AdminController.searchAllProjectsController);
 router.post("/workplaces/search" ,AdminController.searchWorkplacesController);
@@ -41,7 +42,7 @@ router.delete("/workplaces/:id", AdminController.deleteWorkplaceController);
 
 // router.post("/work-reports/search", AdminController.searchWorkReportsController);
 router.post("/projects/search", AdminController.searchAllProjectsController);
-router.post("/tasks/search", AdminController.searchAllTasksController);
+
 router.get("/dashboard-stats", AdminController.getDashboardStatsController);
 
 // === Các route quản lý Project (Admin) ===
