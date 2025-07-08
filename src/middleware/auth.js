@@ -147,7 +147,7 @@ const checkProjectManagerOrAdmin = async (req, res, next) => {
             return res.status(400).json({ ok: false, message: "Thiếu ID của dự án." });
         }
 
-        if (user.role === 'admin') {
+        if (user.role === 'admin' || user.role === 'project_manager') {
             return next();
         }
 
