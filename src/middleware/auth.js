@@ -68,12 +68,12 @@ const checkTaskCreationPermission = async (req, res, next) => {
         // << THAY ĐỔI LOGIC Ở ĐÂY >>
 
         // 1. Nếu là admin, cho qua luôn, không cần check gì thêm (quyền tối cao)
-        if (user.role === 'admin') {
+        if (user.role === 'admin' || user.role === 'project_manager') {
             return next();
         }
         console.log(">>> checkTaskCreationPermission middleware called", user.role, project_id);
         // 2. Nếu là PM hoặc TL, check xem có thuộc dự án không
-        if (user.role === 'project_manager' || user.role === 'team_leader') {
+        if ( user.role === 'team_leader') {
           
             if (!project_id) {
                 return res.status(400).json({ ok: false, message: "Vui lòng cung cấp project_id." });
