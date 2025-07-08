@@ -71,9 +71,10 @@ const checkTaskCreationPermission = async (req, res, next) => {
         if (user.role === 'admin') {
             return next();
         }
-
+        console.log(">>> checkTaskCreationPermission middleware called", user.role, project_id);
         // 2. Nếu là PM hoặc TL, check xem có thuộc dự án không
         if (user.role === 'project_manager' || user.role === 'team_leader') {
+          
             if (!project_id) {
                 return res.status(400).json({ ok: false, message: "Vui lòng cung cấp project_id." });
             }
@@ -85,7 +86,7 @@ const checkTaskCreationPermission = async (req, res, next) => {
                     { members: user._id }
                 ]
             });
-
+            console.log(">>> Project found:", project);
             if (!project) {
                 return res.status(403).json({ ok: false, message: "Bạn không có quyền tạo công việc trong dự án này." });
             }

@@ -6,7 +6,7 @@ const { verifyToken, checkTaskCreationPermission, checkTaskCompletionPermission,
 
 router.delete(
     "/:id",
-    [verifyToken, checkTaskManagementPermission],
+    [verifyToken, checkTaskCreationPermission],
     TaskController.softDeleteTaskController
 );
 
@@ -35,7 +35,7 @@ router.patch(
 
 router.put(
     "/:id",
-    [verifyToken, checkTaskManagementPermission],
+    [verifyToken, checkTaskCreationPermission],
     TaskController.updateTaskController
 );
 
