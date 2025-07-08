@@ -5,7 +5,7 @@ const AdminController = require("../controllers/admin.controller.js");
 const { verifyToken, checkAdmin, checkAdminOrPM } = require("../middleware/auth.js");
 
 router.get("/settings", AdminController.getSystemSettingsController);
-router.post("/projects/:projectId/add-member",verifyToken,AdminController, AdminController.addMemberToProjectController);
+router.post("/projects/:projectId/add-member",verifyToken, AdminController.addMemberToProjectController);
 router.post("/users/search",verifyToken,checkAdminOrPM, AdminController.searchUsersController); 
 router.post("/tasks/search",verifyToken,checkAdminOrPM, AdminController.searchAllTasksController);
 router.post("/attendances/search",verifyToken,checkAdminOrPM, AdminController.searchAllAttendancesController);
