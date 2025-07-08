@@ -2,11 +2,11 @@
 const express = require("express");
 const router = express.Router();
 const AdminController = require("../controllers/admin.controller.js");
-const { verifyToken, checkAdmin } = require("../middleware/auth.js");
+const { verifyToken, checkAdmin, checkAdminOrPM } = require("../middleware/auth.js");
 
 router.get("/settings", AdminController.getSystemSettingsController);
-
-router.post("/workplaces/search" ,AdminController.searchWorkplacesController);
+router.post("/projects/search", AdminController.searchAllProjectsController);
+router.post("/workplaces/search" ,checkAdminOrPM,AdminController.searchWorkplacesController);
 // Áp dụng middleware cho TẤT CẢ các route trong file này
 router.use(verifyToken, checkAdmin);
 

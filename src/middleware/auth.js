@@ -46,6 +46,7 @@ const checkAdmin = (req, res, next) => {
  */
 const checkAdminOrPM = (req, res, next) => {
     const userRole = req.user.role;
+    console.log(">>> checkAdminOrPM middleware called", userRole);
     if (userRole === 'admin' || userRole === 'project_manager') {
         next();
     } else {
