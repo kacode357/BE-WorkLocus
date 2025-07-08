@@ -177,7 +177,7 @@ const checkTaskManagementPermission = async (req, res, next) => {
         }
 
         // Admin có toàn quyền
-        if (user.role === 'admin') {
+        if (user.role === 'admin' || user.role === 'project_manager' || user.role === 'team_leader') {
             return next();
         }
 
