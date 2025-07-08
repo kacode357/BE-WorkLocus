@@ -5,6 +5,7 @@ const AdminController = require("../controllers/admin.controller.js");
 const { verifyToken, checkAdmin, checkAdminOrPM } = require("../middleware/auth.js");
 
 router.get("/settings", AdminController.getSystemSettingsController);
+router.post("/users/search",verifyToken,checkAdminOrPM, AdminController.searchUsersController); 
 router.post("/tasks/search",verifyToken,checkAdminOrPM, AdminController.searchAllTasksController);
 router.post("/attendances/search",verifyToken,checkAdminOrPM, AdminController.searchAllAttendancesController);
 router.post("/projects/search",verifyToken,checkAdminOrPM, AdminController.searchAllProjectsController);
@@ -16,7 +17,7 @@ router.use(verifyToken, checkAdmin);
 router.patch("/maintenance-mode", AdminController.updateMaintenanceModeController);
 
 // === Các route quản lý người dùng ===
-router.post("/users/search", AdminController.searchUsersController); 
+
 router.patch("/users/:id/block", AdminController.blockUserController); 
 router.patch("/users/:id/unblock", AdminController.unblockUserController);
 router.patch("/users/:id/change-password", AdminController.adminChangePasswordController);
