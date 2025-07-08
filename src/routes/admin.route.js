@@ -5,7 +5,8 @@ const AdminController = require("../controllers/admin.controller.js");
 const { verifyToken, checkAdmin, checkAdminOrPM } = require("../middleware/auth.js");
 
 router.get("/settings", AdminController.getSystemSettingsController);
-router.post("/projects/search",checkAdminOrPM, AdminController.searchAllProjectsController);
+router.post("/attendances/search",verifyToken,checkAdminOrPM, AdminController.searchAllAttendancesController);
+router.post("/projects/search",verifyToken,checkAdminOrPM, AdminController.searchAllProjectsController);
 router.post("/workplaces/search" ,AdminController.searchWorkplacesController);
 // Áp dụng middleware cho TẤT CẢ các route trong file này
 router.use(verifyToken, checkAdmin);
@@ -37,7 +38,7 @@ router.patch("/workplaces/:id", AdminController.updateWorkplaceByIdController); 
 router.delete("/workplaces/:id", AdminController.deleteWorkplaceController); 
 
 // === Các route tìm kiếm/báo cáo & dashboard ===
-router.post("/attendances/search", AdminController.searchAllAttendancesController);
+
 // router.post("/work-reports/search", AdminController.searchWorkReportsController);
 router.post("/projects/search", AdminController.searchAllProjectsController);
 router.post("/tasks/search", AdminController.searchAllTasksController);
