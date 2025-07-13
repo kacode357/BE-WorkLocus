@@ -946,7 +946,312 @@ const updateUserRoleService = async ({ userIdToUpdate, newRole, adminId }) => {
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const getProjectTaskStatsService = async ({ searchCondition, pageInfo }) => {
+    try {
+        const { keyword } = searchCondition || {};
+        const { pageNum, pageSize } = pageInfo || {};
+
+        const page = parseInt(pageNum) || 1;
+        const limit = parseInt(pageSize) || 10;
+        const skip = (page - 1) * limit;
+
+        const matchStage = { is_deleted: false }; // Chỉ lấy project chưa xóa
+        if (keyword) {
+            matchStage.name = { $regex: keyword, $options: 'i' };
+        }
+
+        const pipeline = [
+            { $match: matchStage },
+            {
+                $lookup: {
+                    from: 'tasks',
+                    localField: '_id',
+                    foreignField: 'project_id',
+                    // SỬA LẠI ĐIỀU KIỆN Ở ĐÂY CHO TƯỜNG MINH
+                    pipeline: [
+                        { $match: { is_deleted: false } } 
+                    ],
+                    as: 'tasks'
+                }
+            },
+            {
+                $addFields: {
+                    total_tasks: { $size: "$tasks" },
+                    done: { $size: { $filter: { input: "$tasks", as: "task", cond: { $eq: ["$$task.status", "done"] } } } },
+                    in_progress: { $size: { $filter: { input: "$tasks", as: "task", cond: { $eq: ["$$task.status", "in_progress"] } } } },
+                    todo: { $size: { $filter: { input: "$tasks", as: "task", cond: { $eq: ["$$task.status", "todo"] } } } },
+                    last_activity_date: { $ifNull: [ { $max: "$tasks.updated_at" }, "$updated_at" ] }
+                }
+            },
+            { $sort: { last_activity_date: -1 } },
+            {
+                $facet: {
+                    records: [
+                        { $skip: skip },
+                        { $limit: limit },
+                        { $project: { tasks: 0, __v: 0 } }
+                    ],
+                    pagination: [{ $count: 'totalRecords' }]
+                }
+            }
+        ];
+
+        const result = await Project.aggregate(pipeline);
+        const records = result[0].records;
+        const totalRecords = result[0].pagination[0] ? result[0].pagination[0].totalRecords : 0;
+
+        return {
+            status: 200,
+            ok: true,
+            message: "Lấy danh sách thống kê dự án thành công.",
+            data: {
+                records,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalRecords / limit),
+                    totalRecords,
+                }
+            }
+        };
+
+    } catch (error) {
+        console.error("ERROR in getProjectTaskStatsService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
+
+/**
+ * @description API #2 (ĐÃ NÂNG CẤP): Lấy danh sách giờ làm trung bình của NHIỀU nhân viên, có tìm kiếm, lọc theo ngày và phân trang.
+ */
+const getEmployeeAverageHoursService = async ({ searchCondition, pageInfo, date_from, date_to }) => {
+    try {
+        const { keyword } = searchCondition || {};
+        const { pageNum, pageSize } = pageInfo || {};
+
+        const page = parseInt(pageNum) || 1;
+        const limit = parseInt(pageSize) || 10;
+        const skip = (page - 1) * limit;
+
+        // Bắt đầu pipeline từ collection Attendances để xử lý dữ liệu trước
+        const attendancePipeline = [];
+
+        // Bước 1: Lọc các bản ghi chấm công theo ngày
+        const attendanceMatch = { is_deleted: { $ne: true } };
+        if (date_from || date_to) {
+            attendanceMatch.work_date = {};
+            if (date_from) attendanceMatch.work_date.$gte = new Date(date_from);
+            if (date_to) attendanceMatch.work_date.$lte = new Date(date_to);
+        }
+        attendancePipeline.push({ $match: attendanceMatch });
+        
+        // Bước 2: TÍNH TOÁN LẠI GIỜ LÀM VIỆC TỪ TIMESTAMP
+        // Đây là phần sửa lỗi chính.
+        attendancePipeline.push({
+            $addFields: {
+                // Tính số mili giây làm việc buổi sáng (nếu có check-out)
+                morning_ms: {
+                    $cond: {
+                        if: { $and: ["$morning.check_in_time", "$morning.check_out_time"] },
+                        then: { $subtract: ["$morning.check_out_time", "$morning.check_in_time"] },
+                        else: 0
+                    }
+                },
+                // Tính số mili giây làm việc buổi chiều (nếu có check-out)
+                afternoon_ms: {
+                    $cond: {
+                        if: { $and: ["$afternoon.check_in_time", "$afternoon.check_out_time"] },
+                        then: { $subtract: ["$afternoon.check_out_time", "$afternoon.check_in_time"] },
+                        else: 0
+                    }
+                }
+            }
+        });
+        
+        // Tính tổng số giờ và lọc bỏ những ngày không làm việc
+        attendancePipeline.push({
+            $addFields: {
+                calculated_hours: {
+                    $divide: [ { $add: ["$morning_ms", "$afternoon_ms"] }, 3600000 ] // 1h = 3,600,000 ms
+                }
+            }
+        });
+        attendancePipeline.push({ $match: { calculated_hours: { $gt: 0 } } });
+
+        // Bước 3: Nhóm theo user_id để tính trung bình
+        attendancePipeline.push({
+            $group: {
+                _id: "$user_id",
+                average_hours: { $avg: "$calculated_hours" },
+                total_days_worked: { $sum: 1 }
+            }
+        });
+
+        // Bước 4: Join với collection User để lấy thông tin (tên, email,...) và tìm kiếm
+        const userMatch = {
+            'user_info.is_deleted': { $ne: true },
+            'user_info.role': { $ne: 'admin' }
+        };
+        if (keyword) {
+            userMatch.$or = [
+                { 'user_info.full_name': { $regex: keyword, $options: 'i' } },
+                { 'user_info.email': { $regex: keyword, $options: 'i' } }
+            ];
+        }
+
+        attendancePipeline.push({
+            $lookup: {
+                from: 'users',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'user_info'
+            }
+        });
+        attendancePipeline.push({ $unwind: "$user_info" });
+        attendancePipeline.push({ $match: userMatch });
+
+        // Bước 5: Phân trang
+        const finalPipeline = [
+            ...attendancePipeline,
+            { $sort: { average_hours: -1 } },
+            {
+                $facet: {
+                    records: [
+                        { $skip: skip },
+                        { $limit: limit },
+                        {
+                            $project: {
+                                _id: "$user_info._id",
+                                full_name: "$user_info.full_name",
+                                email: "$user_info.email",
+                                role: "$user_info.role",
+                                image_url: "$user_info.image_url",
+                                average_hours: 1,
+                                total_days_worked: 1
+                            }
+                        }
+                    ],
+                    pagination: [{ $count: 'totalRecords' }]
+                }
+            }
+        ];
+
+        const result = await Attendance.aggregate(finalPipeline);
+        const records = result[0].records;
+        const totalRecords = result[0].pagination[0] ? result[0].pagination[0].totalRecords : 0;
+
+        return {
+            status: 200,
+            ok: true,
+            message: "Lấy danh sách giờ làm trung bình của nhân viên thành công.",
+            data: {
+                records,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalRecords / limit),
+                    totalRecords
+                }
+            }
+        };
+
+    } catch (error) {
+        console.error("ERROR in getEmployeeAverageHoursService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
+
+/**
+ * @description API #3: Lấy danh sách dự án kèm theo "sức khỏe" (tiến độ, số task, số member).
+ */
+const getProjectsHealthDashboardService = async ({ searchCondition, pageInfo }) => {
+    try {
+        const { keyword, status } = searchCondition || {};
+        const { pageNum, pageSize } = pageInfo || {};
+
+        const page = parseInt(pageNum) || 1;
+        const limit = parseInt(pageSize) || 10;
+        const skip = (page - 1) * limit;
+
+        // Chỉ lấy project chưa bị xóa
+        const matchStage = { is_deleted: false }; 
+        if (keyword) {
+            matchStage.name = { $regex: keyword, $options: 'i' };
+        }
+        if (status) {
+            matchStage.status = status;
+        }
+
+        const pipeline = [
+            { $match: matchStage },
+            {
+                $lookup: {
+                    from: 'tasks',
+                    localField: '_id',
+                    foreignField: 'project_id',
+                    // <<< SỬA LỖI Ở ĐÂY: Thêm pipeline để chỉ lấy task chưa bị xóa >>>
+                    pipeline: [
+                        { $match: { is_deleted: false } }
+                    ],
+                    as: 'tasks_info'
+                }
+            },
+            {
+                $addFields: {
+                    // Giờ các phép tính này sẽ dựa trên danh sách task đã được lọc, cho kết quả chính xác
+                    total_tasks: { $size: "$tasks_info" },
+                    completed_tasks: {
+                        $size: { $filter: { input: "$tasks_info", as: "task", cond: { $eq: ["$$task.status", "done"] } } }
+                    },
+                    member_count: { $size: "$members" }
+                }
+            },
+            {
+                $addFields: {
+                    progress_percentage: {
+                        $cond: {
+                            if: { $gt: ["$total_tasks", 0] },
+                            then: { $multiply: [ { $divide: ["$completed_tasks", "$total_tasks"] }, 100 ] },
+                            else: 0
+                        }
+                    }
+                }
+            },
+            { $project: { tasks_info: 0, __v: 0 } },
+            { $sort: { created_at: -1 } },
+            {
+                $facet: {
+                    records: [{ $skip: skip }, { $limit: limit }],
+                    pagination: [{ $count: 'totalRecords' }]
+                }
+            }
+        ];
+
+        const result = await Project.aggregate(pipeline);
+        const records = result[0].records;
+        const totalRecords = result[0].pagination[0] ? result[0].pagination[0].totalRecords : 0;
+
+        return {
+            status: 200,
+            ok: true,
+            message: "Lấy dashboard sức khỏe dự án thành công.",
+            data: {
+                records,
+                pagination: {
+                    currentPage: page,
+                    totalPages: Math.ceil(totalRecords / limit),
+                    totalRecords
+                }
+            }
+        };
+
+    } catch (error) {
+        console.error("ERROR in getProjectsHealthDashboardService:", error);
+        return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
+    }
+};
 module.exports = {
+    getProjectTaskStatsService,
+    getEmployeeAverageHoursService,
+    getProjectsHealthDashboardService,
     updateUserRoleService,
     getSystemSettingsService,
     getDashboardStatsService,

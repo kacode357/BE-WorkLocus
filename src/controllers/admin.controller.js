@@ -139,7 +139,32 @@ const updateUserRoleController = (req, res) => {
         adminId: req.user._id.toString(),
     }), res);
 };
+const getProjectTaskStatsController = (req, res) => {
+    handleRequest(() => AdminService.getProjectTaskStatsService({
+        searchCondition: req.body.searchCondition,
+        pageInfo: req.body.pageInfo
+    }), res);
+};
+
+const getEmployeeAverageHoursController = (req, res) => {
+    handleRequest(() => AdminService.getEmployeeAverageHoursService({
+        searchCondition: req.body.searchCondition,
+        pageInfo: req.body.pageInfo,
+        date_from: req.body.date_from,
+        date_to: req.body.date_to
+    }), res);
+};
+
+const getProjectsHealthDashboardController = (req, res) => {
+    handleRequest(() => AdminService.getProjectsHealthDashboardService({
+        searchCondition: req.body.searchCondition,
+        pageInfo: req.body.pageInfo
+    }), res);
+};
 module.exports = {
+    getProjectTaskStatsController,
+    getEmployeeAverageHoursController,
+    getProjectsHealthDashboardController,
     updateUserRoleController,
     getSystemSettingsController,
     searchProjectMembersController,

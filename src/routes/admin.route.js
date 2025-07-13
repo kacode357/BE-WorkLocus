@@ -44,7 +44,9 @@ router.delete("/workplaces/:id", AdminController.deleteWorkplaceController);
 
 // router.post("/work-reports/search", AdminController.searchWorkReportsController);
 router.post("/projects/search", AdminController.searchAllProjectsController);
-
+router.post("/dashboard/project-stats", verifyToken, AdminController.getProjectTaskStatsController);
+router.post("/dashboard/employee-avg-hours", verifyToken,  AdminController.getEmployeeAverageHoursController);
+router.post("/dashboard/projects-health", verifyToken, AdminController.getProjectsHealthDashboardController);
 router.get("/dashboard-stats", AdminController.getDashboardStatsController);
 
 // === Các route quản lý Project (Admin) ===
