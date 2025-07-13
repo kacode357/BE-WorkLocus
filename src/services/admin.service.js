@@ -1036,8 +1036,6 @@ const getEmployeeAverageHoursService = async ({ searchCondition, pageInfo, date_
         const userMatch = { 
             is_deleted: false, 
             is_activated: true,
-            // <<< SỬA LẠI ĐIỀU KIỆN LỌC ROLE Ở ĐÂY >>>
-            // Dùng $nin (not in) để loại bỏ nhiều vai trò cùng lúc
             role: { $nin: ['admin', 'project_manager'] }
         };
         if (keyword) {
@@ -1047,14 +1045,23 @@ const getEmployeeAverageHoursService = async ({ searchCondition, pageInfo, date_
             ];
         }
 
+        // <<< SỬA LỖI LOGIC NGÀY THÁNG Ở ĐÂY >>>
         const dateMatch = {};
-        if (date_from || date_to) {
-            if (date_from) dateMatch.$gte = new Date(date_from);
-            if (date_to) dateMatch.$lte = new Date(date_to);
+        if (date_from) {
+            const startDate = new Date(date_from);
+            startDate.setHours(0, 0, 0, 0); // Bắt đầu từ 00:00:00
+            dateMatch.$gte = startDate;
+        }
+        if (date_to) {
+            const endDate = new Date(date_to);
+            endDate.setHours(23, 59, 59, 999); // Kết thúc vào 23:59:59 của ngày
+            dateMatch.$lte = endDate;
         }
 
         const pipeline = [
             { $match: userMatch },
+
+            // BƯỚC 1: Join với Attendances (lọc theo ngày)
             {
                 $lookup: {
                     from: 'attendances',
@@ -1078,6 +1085,8 @@ const getEmployeeAverageHoursService = async ({ searchCondition, pageInfo, date_
                     as: 'attendance_records'
                 }
             },
+
+            // BƯỚC 2: Join với Tasks để đếm số việc đã hoàn thành (lọc theo ngày)
             {
                 $lookup: {
                     from: 'tasks',
@@ -1087,19 +1096,38 @@ const getEmployeeAverageHoursService = async ({ searchCondition, pageInfo, date_
                         { $match: { 
                             status: 'done',
                             is_deleted: false,
+                            // Giờ điều kiện lọc ngày đã đúng
                             ...(Object.keys(dateMatch).length > 0 && { updated_at: dateMatch })
                         }}
                     ],
                     as: 'completed_tasks'
                 }
             },
+
+            // BƯỚC 3: Join với Tasks để lấy TỔNG SỐ VIỆC ĐƯỢC GIAO (không lọc theo ngày)
+            {
+                $lookup: {
+                    from: 'tasks',
+                    localField: '_id',
+                    foreignField: 'assignee_id',
+                    pipeline: [
+                        { $match: { is_deleted: false } }
+                    ],
+                    as: 'total_assigned_tasks'
+                }
+            },
+            
+            // BƯỚC 4: Tính toán các chỉ số cuối cùng
             {
                 $addFields: {
                     average_hours: { $avg: "$attendance_records.calculated_hours" },
                     total_days_worked: { $size: "$attendance_records" },
-                    completed_tasks_count: { $size: "$completed_tasks" }
+                    completed_tasks_count: { $size: "$completed_tasks" },
+                    total_assigned_tasks_count: { $size: "$total_assigned_tasks" }
                 }
             },
+
+            // BƯỚC 5: Sắp xếp và phân trang
             { $sort: { average_hours: -1 } },
             {
                 $facet: {
@@ -1108,13 +1136,11 @@ const getEmployeeAverageHoursService = async ({ searchCondition, pageInfo, date_
                         { $limit: limit },
                         {
                             $project: {
-                                full_name: 1,
-                                email: 1,
-                                role: 1,
-                                image_url: 1,
+                                full_name: 1, email: 1, role: 1, image_url: 1,
                                 average_hours: { $ifNull: ["$average_hours", 0] },
                                 total_days_worked: 1,
-                                completed_tasks_count: 1
+                                completed_tasks_count: 1,
+                                total_assigned_tasks_count: 1
                             }
                         }
                     ],
@@ -1131,14 +1157,7 @@ const getEmployeeAverageHoursService = async ({ searchCondition, pageInfo, date_
             status: 200,
             ok: true,
             message: "Lấy danh sách hiệu suất nhân viên thành công.",
-            data: {
-                records,
-                pagination: {
-                    currentPage: page,
-                    totalPages: Math.ceil(totalRecords / limit),
-                    totalRecords
-                }
-            }
+            data: { records, pagination: { currentPage: page, totalPages: Math.ceil(totalRecords / limit), totalRecords } }
         };
 
     } catch (error) {
