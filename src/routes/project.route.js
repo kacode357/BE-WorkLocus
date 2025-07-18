@@ -1,51 +1,26 @@
-// File: src/routes/project.route.js
+// src/routes/project.route.js
+
+// Nạp các module và middleware cần thiết.
 const express = require("express");
-const router = express.Router();
 const ProjectController = require("../controllers/project.controller.js");
-const { verifyToken, checkAdminOrPM, checkProjectManagerOrAdmin,  } = require("../middleware/auth.js");
+const { verifyToken, checkAdminOrPM, checkProjectManagerOrAdmin } = require("../middleware/auth.js");
 
-router.delete(
-    "/:projectId/members/:userId",
-    [verifyToken, checkProjectManagerOrAdmin], // Dùng lại middleware vừa sửa
-    ProjectController.removeMemberFromProjectController
-);
+// Khởi tạo router của Express.
+const router = express.Router();
 
-router.put(
-    "/:id",
-    [verifyToken, checkProjectManagerOrAdmin],
-    ProjectController.updateProjectController
-);
+// === CÁC ROUTE MỌI NHÂN VIÊN ĐÃ ĐĂNG NHẬP ĐỀU CÓ THỂ DÙNG ===
+router.post("/search", verifyToken, ProjectController.searchProjectsController);
+router.patch("/:id/join", verifyToken, ProjectController.joinProjectController);
+router.patch("/:id/leave", verifyToken, ProjectController.leaveProjectController);
 
-router.delete(
-    "/:id",
-    [verifyToken, checkProjectManagerOrAdmin],
-    ProjectController.softDeleteProjectController
-);
+// === ROUTE CHỈ DÀNH CHO ADMIN HOẶC PM BẤT KỲ ===
+router.post("/", [verifyToken, checkAdminOrPM], ProjectController.createProjectController);
 
-router.post(
-    "/",
-    [verifyToken, checkAdminOrPM],
-    ProjectController.createProjectController
-);
+// === ROUTE CHỈ DÀNH CHO ADMIN HOẶC PM CỦA DỰ ÁN ĐÓ ===
+router.put("/:id", [verifyToken, checkProjectManagerOrAdmin], ProjectController.updateProjectController);
+router.patch("/:id/complete", [verifyToken, checkProjectManagerOrAdmin], ProjectController.completeProjectController);
+router.delete("/:id", [verifyToken, checkProjectManagerOrAdmin], ProjectController.softDeleteProjectController);
+router.delete("/:projectId/members/:userId", [verifyToken, checkProjectManagerOrAdmin], ProjectController.removeMemberFromProjectController);
 
-router.post(
-    "/search", // Dùng /search cho rõ ràng
-    verifyToken, // Vẫn cần check đăng nhập
-    ProjectController.searchProjectsController
-);
-router.patch(
-    "/:id/join",
-    verifyToken, // Cần biết user là ai để thêm vào
-    ProjectController.joinProjectController
-);
-router.patch(
-    "/:id/complete",
-    [verifyToken, checkProjectManagerOrAdmin],
-    ProjectController.completeProjectController
-);
-router.patch(
-    "/:id/leave",
-    verifyToken, // Cần token để biết user nào đang muốn rời
-    ProjectController.leaveProjectController
-);
+// Xuất router để app chính có thể sử dụng.
 module.exports = router;

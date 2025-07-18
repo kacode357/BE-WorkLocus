@@ -1,15 +1,21 @@
+// src/routes/performanceBonus.route.js
+
+// Nạp các module và middleware cần thiết.
 const express = require('express');
-const router = express.Router();
-const bonusController = require('../controllers/performanceBonus.controller.js');
+const BonusController = require('../controllers/performanceBonus.controller.js');
 const { verifyToken, checkAdmin } = require('../middleware/auth.js');
 
+// Khởi tạo router của Express.
+const router = express.Router();
+
+// Áp dụng middleware xác thực và quyền Admin cho tất cả route bên dưới.
 router.use(verifyToken, checkAdmin);
 
-// Định nghĩa các route CRUD
-router.post('/search', bonusController.searchBonuses);
-router.post('/', bonusController.createBonus);
-// << SỬA LẠI ĐÂY >>
-router.patch('/:id', bonusController.updateBonus); // Dùng /:id và PATCH
-router.delete('/:id', bonusController.softDeleteBonus); // Dùng /:id
+// Các route CRUD quản lý thưởng hiệu suất.
+router.post('/search', BonusController.searchBonuses);
+router.post('/', BonusController.createBonus);
+router.patch('/:id', BonusController.updateBonus);
+router.delete('/:id', BonusController.softDeleteBonus);
 
+// Xuất router để app chính có thể sử dụng.
 module.exports = router;

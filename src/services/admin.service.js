@@ -1023,148 +1023,187 @@ const getProjectTaskStatsService = async ({ searchCondition, pageInfo }) => {
 /**
  * @description API #2 (ĐÃ NÂNG CẤP): Lấy danh sách giờ làm trung bình của NHIỀU nhân viên, có tìm kiếm, lọc theo ngày và phân trang.
  */
-const getEmployeeAverageHoursService = async ({ searchCondition, pageInfo, date_from, date_to }) => {
+/**
+ * @description API: Lấy danh sách giờ làm trung bình của NHIỀU nhân viên,
+ * có tìm kiếm, lọc theo ngày – KHÔNG phân trang.
+ */
+const getEmployeeAverageHoursService = async ({ searchCondition = {}, date_from, date_to }) => {
     try {
-        const { keyword } = searchCondition || {};
-        const { pageNum, pageSize } = pageInfo || {};
+        const { keyword = "" } = searchCondition;
 
-        const page = parseInt(pageNum) || 1;
-        const limit = parseInt(pageSize) || 10;
-        const skip = (page - 1) * limit;
-        
-        // --- Điều kiện lọc ---
-        const userMatch = { 
-            is_deleted: false, 
+        // --- Điều kiện lọc user ---
+        const userMatch = {
+            is_deleted: false,
             is_activated: true,
-            role: { $nin: ['admin', 'project_manager'] }
+            role: { $nin: ["admin", "project_manager"] },
         };
+
         if (keyword) {
             userMatch.$or = [
-                { full_name: { $regex: keyword, $options: 'i' } },
-                { email: { $regex: keyword, $options: 'i' } }
+                { full_name: { $regex: keyword, $options: "i" } },
+                { email: { $regex: keyword, $options: "i" } },
             ];
         }
 
-        // <<< SỬA LỖI LOGIC NGÀY THÁNG Ở ĐÂY >>>
+        // --- Điều kiện lọc ngày ---
         const dateMatch = {};
         if (date_from) {
-            const startDate = new Date(date_from);
-            startDate.setHours(0, 0, 0, 0); // Bắt đầu từ 00:00:00
-            dateMatch.$gte = startDate;
+            const start = new Date(date_from);
+            start.setHours(0, 0, 0, 0);
+            dateMatch.$gte = start;
         }
         if (date_to) {
-            const endDate = new Date(date_to);
-            endDate.setHours(23, 59, 59, 999); // Kết thúc vào 23:59:59 của ngày
-            dateMatch.$lte = endDate;
+            const end = new Date(date_to);
+            end.setHours(23, 59, 59, 999);
+            dateMatch.$lte = end;
         }
 
+        // --- Pipeline ---
         const pipeline = [
             { $match: userMatch },
 
-            // BƯỚC 1: Join với Attendances (lọc theo ngày)
+            // 1. Join Attendances
             {
                 $lookup: {
-                    from: 'attendances',
-                    localField: '_id',
-                    foreignField: 'user_id',
+                    from: "attendances",
+                    localField: "_id",
+                    foreignField: "user_id",
                     pipeline: [
-                        { $match: { is_deleted: false, ...(Object.keys(dateMatch).length > 0 && { work_date: dateMatch }) } },
-                        { $addFields: {
-                            calculated_hours: {
-                                $divide: [
-                                    { $add: [
-                                        { $cond: { if: { $and: ["$morning.check_in_time", "$morning.check_out_time"] }, then: { $subtract: ["$morning.check_out_time", "$morning.check_in_time"] }, else: 0 }},
-                                        { $cond: { if: { $and: ["$afternoon.check_in_time", "$afternoon.check_out_time"] }, then: { $subtract: ["$afternoon.check_out_time", "$afternoon.check_in_time"] }, else: 0 }}
-                                    ]},
-                                    3600000
-                                ]
-                            }
-                        }},
-                        { $match: { calculated_hours: { $gt: 0 } } }
+                        {
+                            $match: {
+                                is_deleted: false,
+                                ...(Object.keys(dateMatch).length && { work_date: dateMatch }),
+                            },
+                        },
+                        {
+                            $addFields: {
+                                calculated_hours: {
+                                    $divide: [
+                                        {
+                                            $add: [
+                                                {
+                                                    $cond: {
+                                                        if: {
+                                                            $and: [
+                                                                "$morning.check_in_time",
+                                                                "$morning.check_out_time",
+                                                            ],
+                                                        },
+                                                        then: {
+                                                            $subtract: [
+                                                                "$morning.check_out_time",
+                                                                "$morning.check_in_time",
+                                                            ],
+                                                        },
+                                                        else: 0,
+                                                    },
+                                                },
+                                                {
+                                                    $cond: {
+                                                        if: {
+                                                            $and: [
+                                                                "$afternoon.check_in_time",
+                                                                "$afternoon.check_out_time",
+                                                            ],
+                                                        },
+                                                        then: {
+                                                            $subtract: [
+                                                                "$afternoon.check_out_time",
+                                                                "$afternoon.check_in_time",
+                                                            ],
+                                                        },
+                                                        else: 0,
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                        36e5, // 3600000 ms => 1 giờ
+                                    ],
+                                },
+                            },
+                        },
+                        { $match: { calculated_hours: { $gt: 0 } } },
                     ],
-                    as: 'attendance_records'
-                }
+                    as: "attendance_records",
+                },
             },
 
-            // BƯỚC 2: Join với Tasks để đếm số việc đã hoàn thành (lọc theo ngày)
+            // 2. Join Tasks (đã hoàn thành) – lọc ngày
             {
                 $lookup: {
-                    from: 'tasks',
-                    localField: '_id',
-                    foreignField: 'assignee_id',
+                    from: "tasks",
+                    localField: "_id",
+                    foreignField: "assignee_id",
                     pipeline: [
-                        { $match: { 
-                            status: 'done',
-                            is_deleted: false,
-                            // Giờ điều kiện lọc ngày đã đúng
-                            ...(Object.keys(dateMatch).length > 0 && { updated_at: dateMatch })
-                        }}
+                        {
+                            $match: {
+                                status: "done",
+                                is_deleted: false,
+                                ...(Object.keys(dateMatch).length && { updated_at: dateMatch }),
+                            },
+                        },
                     ],
-                    as: 'completed_tasks'
-                }
+                    as: "completed_tasks",
+                },
             },
 
-            // BƯỚC 3: Join với Tasks để lấy TỔNG SỐ VIỆC ĐƯỢC GIAO (không lọc theo ngày)
+            // 3. Join Tasks (tổng task) – KHÔNG lọc ngày
             {
                 $lookup: {
-                    from: 'tasks',
-                    localField: '_id',
-                    foreignField: 'assignee_id',
-                    pipeline: [
-                        { $match: { is_deleted: false } }
-                    ],
-                    as: 'total_assigned_tasks'
-                }
+                    from: "tasks",
+                    localField: "_id",
+                    foreignField: "assignee_id",
+                    pipeline: [{ $match: { is_deleted: false } }],
+                    as: "total_assigned_tasks",
+                },
             },
-            
-            // BƯỚC 4: Tính toán các chỉ số cuối cùng
+
+            // 4. Tính toán chỉ số
             {
                 $addFields: {
                     average_hours: { $avg: "$attendance_records.calculated_hours" },
                     total_days_worked: { $size: "$attendance_records" },
                     completed_tasks_count: { $size: "$completed_tasks" },
-                    total_assigned_tasks_count: { $size: "$total_assigned_tasks" }
-                }
+                    total_assigned_tasks_count: { $size: "$total_assigned_tasks" },
+                },
             },
 
-            // BƯỚC 5: Sắp xếp và phân trang
+            // 5. Sắp xếp
             { $sort: { average_hours: -1 } },
+
+            // 6. Chỉ trả về trường cần thiết
             {
-                $facet: {
-                    records: [
-                        { $skip: skip },
-                        { $limit: limit },
-                        {
-                            $project: {
-                                full_name: 1, email: 1, role: 1, image_url: 1,
-                                average_hours: { $ifNull: ["$average_hours", 0] },
-                                total_days_worked: 1,
-                                completed_tasks_count: 1,
-                                total_assigned_tasks_count: 1
-                            }
-                        }
-                    ],
-                    pagination: [{ $count: 'totalRecords' }]
-                }
-            }
+                $project: {
+                    full_name: 1,
+                    email: 1,
+                    role: 1,
+                    image_url: 1,
+                    average_hours: { $ifNull: ["$average_hours", 0] },
+                    total_days_worked: 1,
+                    completed_tasks_count: 1,
+                    total_assigned_tasks_count: 1,
+                },
+            },
         ];
 
-        const result = await User.aggregate(pipeline);
-        const records = result[0].records;
-        const totalRecords = result[0].pagination[0] ? result[0].pagination[0].totalRecords : 0;
-        
+        // --- Thực thi ---
+        const records = await User.aggregate(pipeline);
+
         return {
             status: 200,
             ok: true,
             message: "Lấy danh sách hiệu suất nhân viên thành công.",
-            data: { records, pagination: { currentPage: page, totalPages: Math.ceil(totalRecords / limit), totalRecords } }
+            data: {
+                records,
+                totalRecords: records.length, // tiện trả kèm tổng số
+            },
         };
-
     } catch (error) {
         console.error("ERROR in getEmployeeAverageHoursService:", error);
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+
 /**
  * @description API #3: Lấy danh sách dự án kèm theo "sức khỏe" (tiến độ, số task, số member).
  */

@@ -1,20 +1,21 @@
+// src/routes/attendance.route.js
+
+// Nạp các module và middleware cần thiết.
 const express = require("express");
-const router = express.Router();
 const AttendanceController = require("../controllers/attendance.controller.js");
 const { verifyToken } = require("../middleware/auth.js");
 
-// API MỚI: Để kiểm tra trạng thái check-in hiện tại của nhân viên
-router.get("/status", verifyToken, AttendanceController.getAttendanceStatusController);
+// Khởi tạo router của Express.
+const router = express.Router();
 
-// API để nhân viên thực hiện check-in
-router.post("/check-in", verifyToken, AttendanceController.checkInController);
+// Áp dụng middleware xác thực cho tất cả các route bên dưới.
+router.use(verifyToken);
 
-// API để nhân viên thực hiện check-out
-router.post("/check-out", verifyToken, AttendanceController.checkOutController);
+// Các route cho nhân viên tự quản lý việc điểm danh.
+router.get("/status", AttendanceController.getAttendanceStatusController);
+router.post("/check-in", AttendanceController.checkInController);
+router.post("/check-out", AttendanceController.checkOutController);
+router.post("/history", AttendanceController.getMyAttendanceHistoryController);
 
-// API để nhân viên tự xem lịch sử điểm danh của mình
-router.post("/history", verifyToken, AttendanceController.getMyAttendanceHistoryController);
-
-
-
+// Xuất router để app chính có thể sử dụng.
 module.exports = router;

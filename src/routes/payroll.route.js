@@ -1,16 +1,19 @@
-const express = require('express');
-const router = express.Router();
-const payrollController = require('../controllers/payroll.controller');
+// src/routes/payroll.route.js
 
-// Sửa lại import và dùng middleware của mày
+// Nạp các module và middleware cần thiết.
+const express = require('express');
+const PayrollController = require('../controllers/payroll.controller');
 const { verifyToken, checkAdmin } = require("../middleware/auth.js");
 
-// --- CÁC ROUTE CHO PAYROLL (VIẾT NGANG) ---
+// Khởi tạo router của Express.
+const router = express.Router();
 
-// Method: POST /api/payroll/calculate
-router.post('/calculate', verifyToken, checkAdmin, payrollController.calculatePayrollController);
+// Áp dụng middleware xác thực và quyền Admin cho tất cả route bên dưới.
+router.use(verifyToken, checkAdmin);
 
-// Method: GET /api/payroll
-router.post('/search', verifyToken, checkAdmin, payrollController.searchPayrollsController);
+// Các route quản lý bảng lương chỉ dành cho Admin.
+router.post('/calculate', PayrollController.calculatePayrollController);
+router.post('/search', PayrollController.searchPayrollsController);
 
+// Xuất router để app chính có thể sử dụng.
 module.exports = router;
