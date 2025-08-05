@@ -1037,7 +1037,7 @@ const getEmployeeAverageHoursService = async ({ searchCondition = {}, date_from,
             is_activated: true,
             role: { $nin: ["admin", "project_manager"] },
         };
-
+//
         if (keyword) {
             userMatch.$or = [
                 { full_name: { $regex: keyword, $options: "i" } },
