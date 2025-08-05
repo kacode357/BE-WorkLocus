@@ -1294,15 +1294,16 @@ const getProjectsHealthDashboardService = async ({ searchCondition, pageInfo }) 
     }
 };
 const getUserAttendanceSummaryService = async ({ userId, date_from, date_to }) => {
-    console.log("test");
-
     try {
-        // Kiểm tra user tồn tại, không bị xóa
+        console.log("-> Bắt đầu dịch vụ getUserAttendanceSummaryService với tham số:", { userId, date_from, date_to });
+
         const user = await User.findOne({ _id: userId, is_deleted: { $ne: true } });
         if (!user) {
+            console.log("-> Lỗi: Không tìm thấy nhân viên với userId:", userId);
             return { status: 404, ok: false, message: "Không tìm thấy nhân viên." };
         }
-        // Điều kiện ngày
+        console.log("-> Đã tìm thấy nhân viên:", user.full_name, "(ID:", user._id, ")");
+
         const dateCond = {};
         if (date_from) dateCond.$gte = new Date(date_from);
         if (date_to) {
@@ -1310,70 +1311,96 @@ const getUserAttendanceSummaryService = async ({ userId, date_from, date_to }) =
             to.setHours(23, 59, 59, 999);
             dateCond.$lte = to;
         }
-        // Điều kiện query
+        console.log("-> Điều kiện ngày cho truy vấn:", JSON.stringify(dateCond));
+
         const match = { user_id: userId, is_deleted: { $ne: true } };
         if (Object.keys(dateCond).length) match.work_date = dateCond;
+        console.log("-> Điều kiện truy vấn cuối cùng:", JSON.stringify(match, null, 2));
 
-        // Lấy danh sách attendance
         const attendances = await Attendance.find(match).sort({ work_date: 1 });
+        console.log(`-> Đã tìm thấy ${attendances.length} bản ghi chấm công.`);
 
-        // Tổng số ngày đi làm (số record)
-        const total_days = attendances.length;
-
-        // Tổng số giờ làm (tính cả sáng+chiều)
         let total_hours = 0;
-
-        // Thống kê đi trễ
-        let lateness_count = 0; // tổng lượt đi trễ (ca sáng/chiều)
-        let lateness_days = 0;  // tổng số ngày có ít nhất 1 ca trễ
+        let lateness_count = 0;
+        let lateness_days = 0;
         let lateness_details = [];
+        
+        console.log("-> Bắt đầu vòng lặp xử lý từng bản ghi chấm công...");
 
         const details = attendances.map(a => {
+            console.log(`--- Xử lý bản ghi ngày ${a.work_date.toISOString().split('T')[0]} ---`);
             let hours = 0;
             let late_in_day = false;
 
-            // Sáng
+            // Xử lý ca sáng
             let m_in = a.morning?.check_in_time ? new Date(a.morning.check_in_time) : null;
             let m_out = a.morning?.check_out_time ? new Date(a.morning.check_out_time) : null;
-            if (m_in && m_out)
-                hours += (m_out - m_in) / 36e5;
+            
+            if (m_in && m_out) {
+                const morningHours = (m_out - m_in) / 36e5;
+                hours += morningHours;
+                console.log(`-> Ca sáng: checkin lúc ${m_in.toLocaleTimeString()}, checkout lúc ${m_out.toLocaleTimeString()}. Giờ làm: ${morningHours.toFixed(2)}`);
+            } else {
+                console.log("-> Ca sáng: Không đủ dữ liệu checkin/checkout để tính giờ làm.");
+            }
+
             if (m_in && (m_in.getHours() > 8 || (m_in.getHours() === 8 && m_in.getMinutes() > 0))) {
                 lateness_count++;
                 late_in_day = true;
-                lateness_details.push({
+                const lateDetail = {
                     date: a.work_date,
                     shift: "morning",
                     time: m_in,
                     hour: m_in.getHours(),
                     minute: m_in.getMinutes(),
                     late_type: "late-morning"
-                });
+                };
+                lateness_details.push(lateDetail);
+                console.log(`-> Đi trễ ca sáng! Chi tiết: ${JSON.stringify(lateDetail)}`);
+            } else if (m_in) {
+                console.log("-> Đi làm đúng giờ ca sáng.");
             }
 
-            // Chiều
+            // Xử lý ca chiều
             let a_in = a.afternoon?.check_in_time ? new Date(a.afternoon.check_in_time) : null;
             let a_out = a.afternoon?.check_out_time ? new Date(a.afternoon.check_out_time) : null;
-            if (a_in && a_out)
-                hours += (a_out - a_in) / 36e5;
+            
+            if (a_in && a_out) {
+                const afternoonHours = (a_out - a_in) / 36e5;
+                hours += afternoonHours;
+                console.log(`-> Ca chiều: checkin lúc ${a_in.toLocaleTimeString()}, checkout lúc ${a_out.toLocaleTimeString()}. Giờ làm: ${afternoonHours.toFixed(2)}`);
+            } else {
+                console.log("-> Ca chiều: Không đủ dữ liệu checkin/checkout để tính giờ làm.");
+            }
+            
             if (a_in && (a_in.getHours() > 13 || (a_in.getHours() === 13 && a_in.getMinutes() > 0))) {
                 lateness_count++;
                 late_in_day = true;
-                lateness_details.push({
+                const lateDetail = {
                     date: a.work_date,
                     shift: "afternoon",
                     time: a_in,
                     hour: a_in.getHours(),
                     minute: a_in.getMinutes(),
                     late_type: "late-afternoon"
-                });
+                };
+                lateness_details.push(lateDetail);
+                console.log(`-> Đi trễ ca chiều! Chi tiết: ${JSON.stringify(lateDetail)}`);
+            } else if (a_in) {
+                console.log("-> Đi làm đúng giờ ca chiều.");
             }
 
-            if (late_in_day) lateness_days++;
-
+            if (late_in_day) {
+                lateness_days++;
+                console.log("-> Ngày này có ít nhất một ca đi trễ.");
+            }
+            
             total_hours += hours;
+            console.log(`-> Tổng giờ làm trong ngày: ${hours.toFixed(2)} giờ. Tổng giờ làm hiện tại: ${total_hours.toFixed(2)} giờ.`);
+
             return {
                 date: a.work_date,
-                hours,
+                hours: +hours.toFixed(2),
                 checkin_morning: a.morning?.check_in_time,
                 checkout_morning: a.morning?.check_out_time,
                 checkin_afternoon: a.afternoon?.check_in_time,
@@ -1382,29 +1409,39 @@ const getUserAttendanceSummaryService = async ({ userId, date_from, date_to }) =
                 is_late_afternoon: !!(a_in && (a_in.getHours() > 13 || (a_in.getHours() === 13 && a_in.getMinutes() > 0))),
             }
         });
-
-        return {
+        
+        console.log("-> Kết thúc xử lý tất cả bản ghi.");
+        console.log("-> Thống kê cuối cùng:");
+        console.log(`   - Tổng ngày làm việc: ${attendances.length}`);
+        console.log(`   - Tổng giờ làm việc: ${total_hours.toFixed(2)}`);
+        console.log(`   - Giờ làm trung bình/ngày: ${attendances.length > 0 ? (total_hours / attendances.length).toFixed(2) : 0}`);
+        console.log(`   - Tổng số lần đi trễ: ${lateness_count}`);
+        console.log(`   - Tổng số ngày có đi trễ: ${lateness_days}`);
+        
+        const result = {
             status: 200, ok: true,
             message: "Lấy thống kê công & giờ thành công.",
             data: {
                 user_id: userId,
                 full_name: user.full_name,
                 email: user.email,
-                total_days_worked: total_days,
+                total_days_worked: attendances.length,
                 total_hours_worked: +total_hours.toFixed(2),
-                average_hours_per_day: total_days > 0 ? +(total_hours / total_days).toFixed(2) : 0,
+                average_hours_per_day: attendances.length > 0 ? +(total_hours / attendances.length).toFixed(2) : 0,
                 lateness_count,
                 lateness_days,
                 lateness_details,
-                details // List từng ngày
+                details
             }
-        }
+        };
+        console.log("<- Hoàn tất và trả về kết quả thành công.");
+        return result;
+
     } catch (err) {
-        console.error("ERROR in getUserAttendanceSummaryService:", err);
+        console.error("<- LỖI trong getUserAttendanceSummaryService:", err);
         return { status: 500, ok: false, message: "Lỗi hệ thống!" };
     }
 };
-
 
 
 module.exports = {
