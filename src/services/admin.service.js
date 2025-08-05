@@ -1293,7 +1293,120 @@ const getProjectsHealthDashboardService = async ({ searchCondition, pageInfo }) 
         return { status: 500, ok: false, message: GENERAL_MESSAGES.SYSTEM_ERROR };
     }
 };
+const getUserAttendanceSummaryService = async ({ userId, date_from, date_to }) => {
+    try {
+        // Kiểm tra user tồn tại, không bị xóa
+        const user = await User.findOne({ _id: userId, is_deleted: { $ne: true } });
+        if (!user) {
+            return { status: 404, ok: false, message: "Không tìm thấy nhân viên." };
+        }
+        // Điều kiện ngày
+        const dateCond = {};
+        if (date_from) dateCond.$gte = new Date(date_from);
+        if (date_to) {
+            const to = new Date(date_to);
+            to.setHours(23, 59, 59, 999);
+            dateCond.$lte = to;
+        }
+        // Điều kiện query
+        const match = { user_id: userId, is_deleted: { $ne: true } };
+        if (Object.keys(dateCond).length) match.work_date = dateCond;
+
+        // Lấy danh sách attendance
+        const attendances = await Attendance.find(match).sort({ work_date: 1 });
+
+        // Tổng số ngày đi làm (số record)
+        const total_days = attendances.length;
+
+        // Tổng số giờ làm (tính cả sáng+chiều)
+        let total_hours = 0;
+
+        // Thống kê đi trễ
+        let lateness_count = 0; // tổng lượt đi trễ (ca sáng/chiều)
+        let lateness_days = 0;  // tổng số ngày có ít nhất 1 ca trễ
+        let lateness_details = [];
+
+        const details = attendances.map(a => {
+            let hours = 0;
+            let late_in_day = false;
+
+            // Sáng
+            let m_in = a.morning?.check_in_time ? new Date(a.morning.check_in_time) : null;
+            let m_out = a.morning?.check_out_time ? new Date(a.morning.check_out_time) : null;
+            if (m_in && m_out)
+                hours += (m_out - m_in) / 36e5;
+            if (m_in && (m_in.getHours() > 8 || (m_in.getHours() === 8 && m_in.getMinutes() > 0))) {
+                lateness_count++;
+                late_in_day = true;
+                lateness_details.push({
+                    date: a.work_date,
+                    shift: "morning",
+                    time: m_in,
+                    hour: m_in.getHours(),
+                    minute: m_in.getMinutes(),
+                    late_type: "late-morning"
+                });
+            }
+
+            // Chiều
+            let a_in = a.afternoon?.check_in_time ? new Date(a.afternoon.check_in_time) : null;
+            let a_out = a.afternoon?.check_out_time ? new Date(a.afternoon.check_out_time) : null;
+            if (a_in && a_out)
+                hours += (a_out - a_in) / 36e5;
+            if (a_in && (a_in.getHours() > 13 || (a_in.getHours() === 13 && a_in.getMinutes() > 0))) {
+                lateness_count++;
+                late_in_day = true;
+                lateness_details.push({
+                    date: a.work_date,
+                    shift: "afternoon",
+                    time: a_in,
+                    hour: a_in.getHours(),
+                    minute: a_in.getMinutes(),
+                    late_type: "late-afternoon"
+                });
+            }
+
+            if (late_in_day) lateness_days++;
+
+            total_hours += hours;
+            return {
+                date: a.work_date,
+                hours,
+                checkin_morning: a.morning?.check_in_time,
+                checkout_morning: a.morning?.check_out_time,
+                checkin_afternoon: a.afternoon?.check_in_time,
+                checkout_afternoon: a.afternoon?.check_out_time,
+                is_late_morning: !!(m_in && (m_in.getHours() > 8 || (m_in.getHours() === 8 && m_in.getMinutes() > 0))),
+                is_late_afternoon: !!(a_in && (a_in.getHours() > 13 || (a_in.getHours() === 13 && a_in.getMinutes() > 0))),
+            }
+        });
+
+        return {
+            status: 200, ok: true,
+            message: "Lấy thống kê công & giờ thành công.",
+            data: {
+                user_id: userId,
+                full_name: user.full_name,
+                email: user.email,
+                total_days_worked: total_days,
+                total_hours_worked: +total_hours.toFixed(2),
+                average_hours_per_day: total_days > 0 ? +(total_hours / total_days).toFixed(2) : 0,
+                lateness_count,
+                lateness_days,
+                lateness_details,
+                details // List từng ngày
+            }
+        }
+    } catch (err) {
+        console.error("ERROR in getUserAttendanceSummaryService:", err);
+        return { status: 500, ok: false, message: "Lỗi hệ thống!" };
+    }
+};
+
+
+
 module.exports = {
+    getUserAttendanceSummaryService,
     getProjectTaskStatsService,
     getEmployeeAverageHoursService,
     getProjectsHealthDashboardService,

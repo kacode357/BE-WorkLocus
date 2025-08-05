@@ -23,6 +23,11 @@ router.patch("/maintenance-mode", [verifyToken, checkAdmin], AdminController.upd
 router.post("/dashboard/project-stats", [verifyToken, checkAdmin], AdminController.getProjectTaskStatsController);
 router.post("/dashboard/employee-avg-hours", [verifyToken, checkAdmin], AdminController.getEmployeeAverageHoursController);
 router.post("/dashboard/projects-health", [verifyToken, checkAdmin], AdminController.getProjectsHealthDashboardController);
+router.get(
+    "/users/:id/attendance-summary",
+    [verifyToken, checkAdmin], // hoặc checkAdminOrPM nếu muốn PM dùng được
+    AdminController.getUserAttendanceSummaryController
+);
 // -- Quản lý người dùng (Users)
 router.get("/users/:id", [verifyToken, checkAdmin], AdminController.getEmployeeDetailsByIdController);
 router.patch("/users/:id/block", [verifyToken, checkAdmin], AdminController.blockUserController);

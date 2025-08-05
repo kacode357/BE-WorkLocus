@@ -161,7 +161,13 @@ const getProjectsHealthDashboardController = (req, res) => {
         pageInfo: req.body.pageInfo
     }), res);
 };
+const getUserAttendanceSummaryController = (req, res) => {
+    const { id } = req.params;
+    const { date_from, date_to } = req.query;
+    handleRequest(() => AdminService.getUserAttendanceSummaryService({ userId: id, date_from, date_to }), res);
+};
 module.exports = {
+    getUserAttendanceSummaryController,
     getProjectTaskStatsController,
     getEmployeeAverageHoursController,
     getProjectsHealthDashboardController,
