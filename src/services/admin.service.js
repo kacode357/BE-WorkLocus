@@ -10,7 +10,7 @@ const bcrypt = require("bcrypt");
 const sendEmail = require("../utils/sendEmail");
 const { ADMIN_MESSAGES } = require("../constants/admin.messages");
 const { GENERAL_MESSAGES } = require("../constants/auth.messages");
-
+const { DateTime } = require("luxon");
 const updateMaintenanceModeService = async ({ is_maintenance_mode, maintenance_message, min_app_version }) => {
     try {
         const updateData = {};
@@ -1336,23 +1336,28 @@ const getUserAttendanceSummaryService = async ({ userId, date_from, date_to }) =
             let m_in = a.morning?.check_in_time ? new Date(a.morning.check_in_time) : null;
             let m_out = a.morning?.check_out_time ? new Date(a.morning.check_out_time) : null;
             
+            // Chuyển đổi thời gian về múi giờ địa phương (Việt Nam) để so sánh
+            const m_in_vn = m_in ? DateTime.fromJSDate(m_in, { zone: "Asia/Ho_Chi_Minh" }) : null;
+            const m_out_vn = m_out ? DateTime.fromJSDate(m_out, { zone: "Asia/Ho_Chi_Minh" }) : null;
+            
             if (m_in && m_out) {
                 const morningHours = (m_out - m_in) / 36e5;
                 hours += morningHours;
-                console.log(`-> Ca sáng: checkin lúc ${m_in.toLocaleTimeString()}, checkout lúc ${m_out.toLocaleTimeString()}. Giờ làm: ${morningHours.toFixed(2)}`);
+                console.log(`-> Ca sáng: checkin lúc ${m_in_vn.toFormat("HH:mm:ss")}, checkout lúc ${m_out_vn.toFormat("HH:mm:ss")}. Giờ làm: ${morningHours.toFixed(2)}`);
             } else {
                 console.log("-> Ca sáng: Không đủ dữ liệu checkin/checkout để tính giờ làm.");
             }
 
-            if (m_in && (m_in.getHours() > 8 || (m_in.getHours() === 8 && m_in.getMinutes() > 0))) {
+            // Dùng Luxon để so sánh giờ địa phương
+            if (m_in_vn && (m_in_vn.hour > 8 || (m_in_vn.hour === 8 && m_in_vn.minute > 0))) {
                 lateness_count++;
                 late_in_day = true;
                 const lateDetail = {
                     date: a.work_date,
                     shift: "morning",
                     time: m_in,
-                    hour: m_in.getHours(),
-                    minute: m_in.getMinutes(),
+                    hour: m_in_vn.hour,
+                    minute: m_in_vn.minute,
                     late_type: "late-morning"
                 };
                 lateness_details.push(lateDetail);
@@ -1365,23 +1370,28 @@ const getUserAttendanceSummaryService = async ({ userId, date_from, date_to }) =
             let a_in = a.afternoon?.check_in_time ? new Date(a.afternoon.check_in_time) : null;
             let a_out = a.afternoon?.check_out_time ? new Date(a.afternoon.check_out_time) : null;
             
+            // Chuyển đổi thời gian về múi giờ địa phương (Việt Nam) để so sánh
+            const a_in_vn = a_in ? DateTime.fromJSDate(a_in, { zone: "Asia/Ho_Chi_Minh" }) : null;
+            const a_out_vn = a_out ? DateTime.fromJSDate(a_out, { zone: "Asia/Ho_Chi_Minh" }) : null;
+
             if (a_in && a_out) {
                 const afternoonHours = (a_out - a_in) / 36e5;
                 hours += afternoonHours;
-                console.log(`-> Ca chiều: checkin lúc ${a_in.toLocaleTimeString()}, checkout lúc ${a_out.toLocaleTimeString()}. Giờ làm: ${afternoonHours.toFixed(2)}`);
+                console.log(`-> Ca chiều: checkin lúc ${a_in_vn.toFormat("HH:mm:ss")}, checkout lúc ${a_out_vn.toFormat("HH:mm:ss")}. Giờ làm: ${afternoonHours.toFixed(2)}`);
             } else {
                 console.log("-> Ca chiều: Không đủ dữ liệu checkin/checkout để tính giờ làm.");
             }
             
-            if (a_in && (a_in.getHours() > 13 || (a_in.getHours() === 13 && a_in.getMinutes() > 0))) {
+            // Dùng Luxon để so sánh giờ địa phương
+            if (a_in_vn && (a_in_vn.hour > 13 || (a_in_vn.hour === 13 && a_in_vn.minute > 0))) {
                 lateness_count++;
                 late_in_day = true;
                 const lateDetail = {
                     date: a.work_date,
                     shift: "afternoon",
                     time: a_in,
-                    hour: a_in.getHours(),
-                    minute: a_in.getMinutes(),
+                    hour: a_in_vn.hour,
+                    minute: a_in_vn.minute,
                     late_type: "late-afternoon"
                 };
                 lateness_details.push(lateDetail);
@@ -1405,18 +1415,18 @@ const getUserAttendanceSummaryService = async ({ userId, date_from, date_to }) =
                 checkout_morning: a.morning?.check_out_time,
                 checkin_afternoon: a.afternoon?.check_in_time,
                 checkout_afternoon: a.afternoon?.check_out_time,
-                is_late_morning: !!(m_in && (m_in.getHours() > 8 || (m_in.getHours() === 8 && m_in.getMinutes() > 0))),
-                is_late_afternoon: !!(a_in && (a_in.getHours() > 13 || (a_in.getHours() === 13 && a_in.getMinutes() > 0))),
+                is_late_morning: !!(m_in_vn && (m_in_vn.hour > 8 || (m_in_vn.hour === 8 && m_in_vn.minute > 0))),
+                is_late_afternoon: !!(a_in_vn && (a_in_vn.hour > 13 || (a_in_vn.hour === 13 && a_in_vn.minute > 0))),
             }
         });
         
         console.log("-> Kết thúc xử lý tất cả bản ghi.");
         console.log("-> Thống kê cuối cùng:");
-        console.log(`   - Tổng ngày làm việc: ${attendances.length}`);
-        console.log(`   - Tổng giờ làm việc: ${total_hours.toFixed(2)}`);
-        console.log(`   - Giờ làm trung bình/ngày: ${attendances.length > 0 ? (total_hours / attendances.length).toFixed(2) : 0}`);
-        console.log(`   - Tổng số lần đi trễ: ${lateness_count}`);
-        console.log(`   - Tổng số ngày có đi trễ: ${lateness_days}`);
+        console.log(`   - Tổng ngày làm việc: ${attendances.length}`);
+        console.log(`   - Tổng giờ làm việc: ${total_hours.toFixed(2)}`);
+        console.log(`   - Giờ làm trung bình/ngày: ${attendances.length > 0 ? (total_hours / attendances.length).toFixed(2) : 0}`);
+        console.log(`   - Tổng số lần đi trễ: ${lateness_count}`);
+        console.log(`   - Tổng số ngày có đi trễ: ${lateness_days}`);
         
         const result = {
             status: 200, ok: true,
