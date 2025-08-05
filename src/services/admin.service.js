@@ -1294,6 +1294,8 @@ const getProjectsHealthDashboardService = async ({ searchCondition, pageInfo }) 
     }
 };
 const getUserAttendanceSummaryService = async ({ userId, date_from, date_to }) => {
+    console.log("test");
+
     try {
         // Kiểm tra user tồn tại, không bị xóa
         const user = await User.findOne({ _id: userId, is_deleted: { $ne: true } });
